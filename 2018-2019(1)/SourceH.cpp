@@ -28,11 +28,9 @@ string get_url(string windows_name)
 				"Chrome_WidgetWin_1",	// указатель имени класса
 				NULL					// указатель имени окна (Если этот параметр ПУСТО (NULL), имена всех окон соответствующие.)
 			);
-			//cout << "gopa2 " << "\n";
 		}
-		/*else
+		/*else	// здесь пытался работать с мазилой -по неизвествной причине не работает
 		{
-		cout << "gopa1 " << "\n";
 		hwnd = FindWindowEx(0, hwnd, "MozillaWindowClass", NULL);
 		}*/
 		if (!hwnd)
@@ -61,15 +59,10 @@ string get_url(string windows_name)
 			&condition						// Указатель на новое условие
 		);
 
-		//или используйте edit control's name взамен
-		//uia->CreatePropertyCondition(UIA_NamePropertyId, 
-		//      CComVariant(L"Address and search bar"), &condition);
-
 		CComPtr<IUIAutomationElement> edit; // редактор
 		if (FAILED(root->FindFirst(TreeScope_Descendants, condition, &edit))
 			|| !edit)
 			continue; //maybe we don't have the right tab, continue...
-					  //cout << "gopa " <<  "\n";
 		CComVariant url;
 		edit->GetCurrentPropertyValue(UIA_ValueValuePropertyId, &url);
 		url1 = url.bstrVal;
