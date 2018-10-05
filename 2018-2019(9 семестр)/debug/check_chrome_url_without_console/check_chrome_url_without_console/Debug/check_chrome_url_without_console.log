@@ -1,0 +1,6 @@
+﻿  Source.cpp
+d:\documents\github\nir\2018-2019(9 семестр)\debug\check_chrome_url_without_console\check_chrome_url_without_console\source.cpp(51): warning C4101: seconds: неиспользованная локальная переменная
+d:\documents\github\nir\2018-2019(9 семестр)\debug\check_chrome_url_without_console\check_chrome_url_without_console\source.cpp(52): warning C4101: i: неиспользованная локальная переменная
+d:\documents\github\nir\2018-2019(9 семестр)\debug\check_chrome_url_without_console\check_chrome_url_without_console\source.cpp(50): warning C4101: ptr: неиспользованная локальная переменная
+  check_chrome_url_without_console.vcxproj -> D:\Documents\Github\NIR\2018-2019(9 семестр)\debug\check_chrome_url_without_console\Debug\check_chrome_url_without_console.exe
+  check_chrome_url_without_console.vcxproj -> D:\Documents\Github\NIR\2018-2019(9 семестр)\debug\check_chrome_url_without_console\Debug\check_chrome_url_without_console.pdb (Partial PDB)
