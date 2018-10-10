@@ -28,10 +28,6 @@ string get_url(string windows_name)
 				NULL					// указатель имени окна (Если этот параметр ПУСТО (NULL), имена всех окон соответствующие.)
 			);
 		}
-		/*else	// здесь пытался работать с мазилой -по неизвествной причине не работает
-		{
-		hwnd = FindWindowEx(0, hwnd, "MozillaWindowClass", NULL);
-		}*/
 		if (!hwnd)
 			break;
 		if (!IsWindowVisible(hwnd))	// находит данные о состоянии видимости заданного окна
@@ -99,7 +95,6 @@ string get_active_window()
 	}
 	else
 	{
-		// Ошибка при открытии процесса. За подробностями — к GetLastError()
 		return string();
 	}
 }
