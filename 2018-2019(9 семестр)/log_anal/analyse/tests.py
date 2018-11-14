@@ -11,10 +11,12 @@ class Test1(TestCase):
     def test1(self):
         u_log = Log.objects.filter(username=NAME)
         a = Analyst(u_log, NAME)
-        result = a.start_treatment()
-        result.update(a.activity_analyse())
-        for k in result:
-            s = k+": "+str(result[k])
-            print(s)
+        a.activity_analyse()
+        with open('./users/otch.txt', 'w') as f:
+
+            for k in a.result:
+                s = k+": "+str(a.result[k])+"\n"
+                f.writelines(s)
+            #print(s)
 
 
