@@ -19,7 +19,7 @@ WIDTH = 32*5#320
 HEIGHT = 18*5#180
 
 
-class Main():
+class Main:
     def __init__(self):
         names = Log.objects.values_list('username').distinct()
         names = [name[0] for name in names]
@@ -27,14 +27,15 @@ class Main():
             u_log = Log.objects.filter(username=name)
             a = Analyst(u_log, name)
             a.activity_analyse()
-            path = './users/' +name + '_otch.txt'
+            path = './users/' + name + '_otch.txt'
             with open(path, 'w') as f:
                 for k in a.result:
-                    s = k+": "+str(a.result[k])+"\n"
+                    s = k + ": " + str(a.result[k]) + "\n"
                     f.writelines(s)
+                #json.dump(a.result, f)
 
 
-class Analyst():
+class Analyst:
     def __init__(self, log, username):
         self.log = log
         self.username = username
@@ -53,18 +54,20 @@ class Analyst():
         self.start_treatment()
         self.distribution_in_time()
         self.frequent_objects()
-        # self.n_gramms()
-        # self.pause()
+        self.n_gramms()
+        self.pause()
         self.graphic_res()
 
     # Пункт 0: самые общие данные о логе
     def start_treatment(self):
         # самая общая информация о логе, которая могла вас интересовать
         self.result['всего записей'] = self.n_clicks
-        self.result['начало записи лога'] = self.log.aggregate(Min('time'))['time__min']
-        self.result['конец записи лога'] = self.log.aggregate(Max('time'))['time__max']
-        time = self.result['конец записи лога'] - self.result['начало записи лога']
+        start = self.log.aggregate(Min('time'))['time__min']
+        end = self.log.aggregate(Max('time'))['time__max']
+        time = end - start
         self.result['длительность снятия данных'] = str(time)
+        self.result['начало записи лога'] = str(start)
+        self.result['конец записи лога'] = str(end)
         self.result['количество сеансов'] = self.seance
 
     # Пункт 1: распределением по дням недели и времени суток; время между запуском компа и браузера
@@ -141,20 +144,23 @@ class Analyst():
         starts = starts.values_list('id', 'time')
         starts_min = 0
         for id, time in starts:
-            time2 = self.log.get(pk=(id + 1)).time
-            pause = time2 - time
-            pause_key = pause.seconds #// TOTAL_SECONDS
-            if pause_key in start_brows:
-                start_brows[pause_key] += 1
-            else:
-                start_brows[pause_key] = 1
-            if pause.seconds <= 60:
-                starts_min += 1
-                pause_key = pause.seconds #// TOTAL_SECONDS_IN_MIN
-                if pause_key in start_brows_min:
-                    start_brows_min[pause_key] += 1
+            try:
+                time2 = self.log.get(pk=(id + 1)).time
+                pause = time2 - time
+                pause_key = pause.seconds #// TOTAL_SECONDS
+                if pause_key in start_brows:
+                    start_brows[pause_key] += 1
                 else:
-                    start_brows_min[pause_key] = 1
+                    start_brows[pause_key] = 1
+                if pause.seconds <= 60:
+                    starts_min += 1
+                    pause_key = pause.seconds #// TOTAL_SECONDS_IN_MIN
+                    if pause_key in start_brows_min:
+                        start_brows_min[pause_key] += 1
+                    else:
+                        start_brows_min[pause_key] = 1
+            except:
+                pass
         #self.result['количество пауз между запуском компа и браузера'] = start_brows
         #self.result['количество пауз между запуском компа и браузера(минута)(в количестве)'] = start_brows_min
         t = start_brows.copy()
@@ -188,7 +194,8 @@ class Analyst():
         self.result['распределение количества кликов на частых доменах(когда не переключаемся на другой)'] = domain_clicks
 
         # Пункт 2.3: карта кликов
-        #self.click_map()
+        self._click_map(frequent_urls, 'url')
+        self._click_map(frequent_domains, 'domain')
 
     def _get_frequent_objects_list(self, obj_list, obj_type, numbers):
         # возвращает массив частых объектов в виде:
@@ -270,59 +277,59 @@ class Analyst():
         if not os.path.exists(path):
             os.makedirs(path)
         for data in frequent_objects:
-            for obj in data[2]:
-                if type_obj == 'domain':
-                    mass_coordinates = self.log.filter(domain=obj).values_list(
-                        'x_cursor_coordinates',
-                        'y_cursor_coordinates',
-                        'x1_window_coordinates',
-                        'x2_window_coordinates',
-                        'y1_window_coordinates',
-                        'y2_window_coordinates',
-                    )
-                else:
-                    mass_coordinates = self.log.filter(url=obj).values_list(
-                        'x_cursor_coordinates',
-                        'y_cursor_coordinates',
-                        'x1_window_coordinates',
-                        'x2_window_coordinates',
-                        'y1_window_coordinates',
-                        'y2_window_coordinates',
-                    )
-                matrix = np.zeros((HEIGHT, WIDTH))
+            obj = data[0]
+            if type_obj == 'domain':
+                mass_coordinates = self.log.filter(domain=obj).values_list(
+                    'x_cursor_coordinates',
+                    'y_cursor_coordinates',
+                    'x1_window_coordinates',
+                    'x2_window_coordinates',
+                    'y1_window_coordinates',
+                    'y2_window_coordinates',
+                )
+            else:
+                mass_coordinates = self.log.filter(url=obj).values_list(
+                    'x_cursor_coordinates',
+                    'y_cursor_coordinates',
+                    'x1_window_coordinates',
+                    'x2_window_coordinates',
+                    'y1_window_coordinates',
+                    'y2_window_coordinates',
+                )
+            matrix = np.zeros((HEIGHT, WIDTH))
 
-                for c in mass_coordinates:
-                    try:
-                        y_point = int((c[1] - c[4]) / ((c[5] - c[4]) / HEIGHT))
-                        if y_point == HEIGHT:
-                            y_point = HEIGHT - 1
-                        x_point = int((c[0] - c[2]) / ((c[3] - c[2]) / HEIGHT))
-                        if x_point == WIDTH:
-                            x_point = WIDTH - 1
-                        matrix[y_point, x_point] += 1
-                    except:
-                        pass
+            for c in mass_coordinates:
+                try:
+                    y_point = int((c[1] - c[4]) / ((c[5] - c[4]) / HEIGHT))
+                    if y_point == HEIGHT:
+                        y_point = HEIGHT - 1
+                    x_point = int((c[0] - c[2]) / ((c[3] - c[2]) / HEIGHT))
+                    if x_point == WIDTH:
+                        x_point = WIDTH - 1
+                    matrix[y_point, x_point] += 1
+                except:
+                    pass
 
-                px = []
-                py = []
-                a = []
-                cm = plt.cm.get_cmap('jet')
-                for y in range(HEIGHT):
-                    for x in range(WIDTH):
-                        px.append(x)
-                        py.append(HEIGHT-y)
-                        a.append(int(matrix[y, x]) if int(matrix[y, x]) > 0 else None)
+            px = []
+            py = []
+            a = []
+            cm = plt.cm.get_cmap('jet')
+            for y in range(HEIGHT):
+                for x in range(WIDTH):
+                    px.append(x)
+                    py.append(HEIGHT-y)
+                    a.append(int(matrix[y, x]) if int(matrix[y, x]) > 0 else None)
 
-                plt.scatter(px, py, c=a, cmap=cm)
-                plt.xlabel("x")
-                plt.ylabel("y")
-                plt.title(str(obj))
-                cbar = plt.colorbar()
-                cbar.set_label("elevation (m)", labelpad=+1)
-                #plt.show()
-                i+=1
-                plt.savefig(path+"\\"+type_obj+" "+self.username+" "+str(i)+".png")
-                plt.clf()
+            plt.scatter(px, py, c=a, cmap=cm)
+            plt.xlabel("x")
+            plt.ylabel("y")
+            plt.title(str(obj))
+            cbar = plt.colorbar()
+            cbar.set_label("elevation (m)", labelpad=+1)
+            #plt.show()
+            i+=1
+            plt.savefig(path+"\\"+type_obj+" "+self.username+" "+str(i)+".png")
+            plt.clf()
 
     # Пункт 3: частые n-граммы
     def n_gramms(self):
@@ -330,9 +337,9 @@ class Analyst():
         self.result['время биграмм урлов'] = a
         self.result['время триграмм урлов'] = b
 
-        #c,d = self.get_n_gramms('domain')
-        # self.result['время биграмм доменов'] = c
-        # self.result['время триграмм доменов'] = d
+        c,d = self._get_n_gramms('domain')
+        self.result['время биграмм доменов'] = c
+        self.result['время триграмм доменов'] = d
 
     def _bigramm(self, query, query2, query_time, params):
         bi_gramms = {}
@@ -512,20 +519,20 @@ class Analyst():
 
     # Пункт 5: графический отчет
     def graphic_res(self):
-        # weekdays = list(calendar.day_abbr)
-        # self._simple_diagr('распределение по дням недели', self.result['распределение по дням недели'], weekdays)
-        # self._simple_diagr('распределение по времени суток', self.result['распределение по времени суток'])
-        #
-        # title = 'распределение по дням недели и времени суток'  # если день брать за 100%
-        # for key in self.result[title]:
-        #     self._simple_diagr(title, self.result[title][key], note=str(weekdays[key]))
-        #
-        # titles = [
-        #     'распределение пауз между запуском компа и браузера',
-        #     'распределение пауз между запуском компа и браузера(минута)'
-        # ]
-        # for title in titles:
-        #     self._simple_line(title, self.result[title])
+        weekdays = list(calendar.day_abbr)
+        self._simple_diagr('распределение по дням недели', self.result['распределение по дням недели'], weekdays)
+        self._simple_diagr('распределение по времени суток', self.result['распределение по времени суток'])
+
+        title = 'распределение по дням недели и времени суток'  # если день брать за 100%
+        for key in self.result[title]:
+            self._simple_diagr(title, self.result[title][key], note=str(weekdays[key]))
+
+        titles = [
+            'распределение пауз между запуском компа и браузера',
+            'распределение пауз между запуском компа и браузера(минута)'
+        ]
+        for title in titles:
+            self._simple_line(title, self.result[title])
 
         titles = [
             'частые url',
@@ -553,7 +560,7 @@ class Analyst():
         path = str("./users/") + self.username + "/" + title
         x = list(data_dict.keys())
         x.sort()
-        print(len(x))
+        #print(len(x))
         if len(x)>100:
             x = x[:100]
         y = [data_dict[i] for i in x]
@@ -588,8 +595,8 @@ class Analyst():
         y = [str(frequency[i][0])[:20] for i in x_f]
 
         ax.barh(y, x_f, align='center')
-        ax.set_yticks(range(len(y)), y)
-        #ax.set_yticklabels(y)
+        #ax.set_yticks(range(len(y)), y)
+        ax.set_yticklabels(y)
         ax.set_title(title)
         plt.subplots_adjust(left=0.3)
         ax.invert_yaxis()
