@@ -1,3 +1,4 @@
+# заполняет БД данными из папки logs
 from datetime import datetime as dd
 from os import listdir
 from os.path import isfile, join
@@ -7,7 +8,7 @@ from analyse.models import Log
 
 
 def filling_bd(NAME):
-    with open('.\\users\\'+NAME+'.txt') as file:
+    with open('.\\logs\\'+NAME+'.txt') as file:
         data = [line for line in file]
     last_active_time = None
     seance = -1
@@ -65,6 +66,6 @@ def filling_bd(NAME):
             pass
 
 #if __name__ == '__main__':
-names = [f.split('.')[0] for f in listdir('users') if isfile(join('users', f))]
+names = [f.split('.')[0] for f in listdir('logs') if isfile(join('logs', f))]
 for name in names:
     filling_bd(name)
