@@ -2,9 +2,9 @@ from django.db import models
 
 
 class Log(models.Model):
-    day = models.DateTimeField(db_index=True)
-    local_time = models.DateTimeField(default=None)
-    time = models.DateTimeField()
+    day = models.DateTimeField(db_index=True)   # день календаря
+    local_time = models.DateTimeField(default=None) # часы минуты секунды
+    time = models.DateTimeField()   # время в полном формате (day + local_time)
     url = models.TextField(db_index=True, default="")
     domain = models.CharField(db_index=True, default="", max_length=100)
 
