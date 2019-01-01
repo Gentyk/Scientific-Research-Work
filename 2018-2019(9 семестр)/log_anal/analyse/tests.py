@@ -1,7 +1,6 @@
 from django.test import TestCase
 
-from analys import Main
-from analyse.models import Log
+from work_files.analys import Main
 
 
 class Test1(TestCase):

@@ -1,6 +1,7 @@
 import calendar
 from datetime import datetime as dd, timedelta
 from django.db.models import Avg, Max, Min, Sum
+from django.db.models import F
 import json
 import matplotlib.pyplot as plt
 import matplotlib
@@ -8,8 +9,9 @@ import numpy as np
 import os
 from pytz import timezone
 
-from analyse.models import Log
+from analyse.models import Bigrams, Log, Trigrams
 
+PERIOD = 24 # период времени в днях из которого 70% будут использоваться для обучения, а 30% для тетстирования
 TIMES_OF_DAY = 8  # на сколько поделим день для анализа активности за день
 TOTAL_SECONDS = 10  # анализ пауз между включением компа и браузера -  шаг(диапазо)
 TOTAL_SECONDS_IN_MIN = 3  # аналогично, но в течение минуты
@@ -25,7 +27,11 @@ class Main:
         names = [name[0] for name in names]
         for name in names:
             u_log = Log.objects.filter(username=name)
-            a = Analyst(u_log, name)
+            finish_time = u_log.earliest('time') + timedelta(days=PERIOD)
+            u_log = u_log.filter(time__lte=finish_time)
+            bi_log = Bigrams.objects.filter(username=name).filter(time1__lte=finish_time).filter(time2__lte=finish_time)
+            tri_log = Trigrams.objects.filter(username=name).filter(time2__lte=finish_time).filter(time3__lte=finish_time)
+            a = Analyst(u_log, bi_log, tri_log, name, finish_time)
             a.activity_analyse()
             path = './users/' + name + '_otch.txt'
             with open(path, 'w') as f:
@@ -35,10 +41,13 @@ class Main:
                 #json.dump(a.result, f)
 
 
-class Analyst:
-    def __init__(self, log, username):
+class Analyst(object):
+    def __init__(self, log, bi_log, tri_log, username, finish_time):
         self.log = log
+        self.bi = bi_log
+        self.tri = tri_log
         self.username = username
+        self.finish_time = finish_time
         self.seance = log.values("seance").distinct().count()
         self.n_clicks = self.log.filter(start_computer=False).count()
         self.result = {}
@@ -62,8 +71,8 @@ class Analyst:
     def start_treatment(self):
         # самая общая информация о логе, которая могла вас интересовать
         self.result['всего записей'] = self.n_clicks
-        start = self.log.aggregate(Min('time'))['time__min']
-        end = self.log.aggregate(Max('time'))['time__max']
+        start = self.log.latest('time')
+        end = self.log.latest('time')
         time = end - start
         self.result['длительность снятия данных'] = str(time)
         self.result['начало записи лога'] = str(start)
@@ -241,19 +250,23 @@ class Analyst:
                     "      AND p2.obj = %s" \
                     "      AND p1.seance = p2.seance" \
                     "      AND p1.username = %s AND p2.username = %s " \
+                    "      AND p1.time <= %s AND p2.time <= %s" \
                     "      OR  p1.id-1 = p2.id" \
                     "      AND p1.obj <> %s" \
                     "      AND p2.obj = %s" \
                     "      AND p1.seance = p2.seance" \
                     "      AND p1.username = %s AND p2.username = %s" \
+                    "      AND p1.time <= %s AND p2.time <= %s" \
                     "      OR  p1.id+1 = p2.id" \
                     "      AND p2.obj = %s" \
                     "      AND p1.seance <> p2.seance" \
                     "      AND p1.username = %s AND p2.username = %s" \
+                    "      AND p1.time <= %s AND p2.time <= %s" \
                     "      OR  p1.id-1 = p2.id" \
                     "      AND p2.obj = %s" \
                     "      AND p1.seance <> p2.seance" \
-                    "      AND p1.username = %s AND p2.username = %s"
+                    "      AND p1.username = %s AND p2.username = %s" \
+                    "      AND p1.time <= %s AND p2.time <= %s"
         obj_query = query.replace('obj', name_obj)
         times = {}
         clicks = {}
@@ -261,7 +274,10 @@ class Analyst:
             obj = i[0]
             times[obj] = []
             clicks[obj] = []
-            params = [obj, obj, self.username, self.username, obj, obj, self.username, self.username, obj, self.username, self.username, obj, self.username, self.username,]
+            params = [obj, obj, self.username, self.username, self.finish_time, self.finish_time,
+                      obj, obj, self.username, self.username, self.finish_time, self.finish_time,
+                      obj, self.username, self.username, self.finish_time, self.finish_time,
+                      obj, self.username, self.username, self.finish_time, self.finish_time,]
             data = Log.objects.raw(obj_query, params)
             a = len(data)
             for i in range(a//2):
@@ -333,166 +349,129 @@ class Analyst:
 
     # Пункт 3: частые n-граммы
     def n_gramms(self):
-        a, b = self._get_n_gramms('url')
-        self.result['время биграмм урлов'] = a
-        self.result['время триграмм урлов'] = b
+        """
+        Функция, которая получает информацию о биграммах и триграммах пользователя и записывает их в словарь
+        """
+        urls_bigrams, domains_bigrams = self._bigramm()
+        self.result['url биграммы'] = urls_bigrams
+        self.result['domain биграммы'] = domains_bigrams
 
-        c,d = self._get_n_gramms('domain')
-        self.result['время биграмм доменов'] = c
-        self.result['время триграмм доменов'] = d
+        urls_trigrams, domains_trigrams = self._bigramm()
+        self.result['url триграммы'] = urls_trigrams
+        self.result['domain триграммы'] = domains_trigrams
 
-    def _bigramm(self, query, query2, query_time, params):
+    def _bigramm(self):
+        print('биграммы начало')
         bi_gramms = {}
-        a = Log.objects.raw(query, params)
+        a = self.bi.only('url1', 'url2').distinct('url1', 'url2').values_list('url1', 'url2')
+        print(len(a))
         mass = []
         for data in a:
-            n = len(Log.objects.raw(query2, [data.u1, data.u2]+params))
+            n = self.bi.only('url1', 'url2').filter(url1=data[0]).filter(url2=data[1]).count()
             if n in bi_gramms:
-                bi_gramms[n].append((data.u1, data.u2))
+                bi_gramms[n].append((data[0], data[1]))
             else:
-                bi_gramms[n] = [(data.u1, data.u2)]
+                bi_gramms[n] = [(data[0], data[1])]
             if n not in mass:
                 mass.append(n)
         mass.sort(reverse=True)
-        mass = mass[:30]
+        mass = mass[:15]
         result_bi_gramms = {}
         for n in mass:
             for urls in bi_gramms[n]:
-                times = Log.objects.raw(query_time, [urls[0], urls[1]] + params)
-                t = [t.t2.seconds for t in times]
-                v = None
-                if t:
-                    v = sum(t)/len(t)
-                result_bi_gramms[urls[0] + ", " + urls[1]] = (max(t), v, t)
-        return result_bi_gramms
-
-    def _threegramm(self, query, query2, query_time, name):
-        th_gramms = {}
-        a = Log.objects.raw(query, [name, name, name])
+                # times = self.bi.filter(url1=urls[0]).filter(url2=urls[1]).values_list(time1, time2)
+                # t = [t[1].seconds - t[0].seconds for t in times]
+                # v = None
+                # if t:
+                #     v = sum(t)/len(t)
+                result_bi_gramms[urls[0] + ", " + urls[1]] = n#(max(t), v, t)
+        bi_gramms = {}
+        a = self.bi.only('domain1', 'domain2').exclude(domain1=F('domain2')).distinct('domain1', 'domain2').values_list(
+            'domain1', 'domain2')
+        print(len(a))
         mass = []
         for data in a:
-            n = len(Log.objects.raw(query2, [data.u1, data.u2, name, name, data.u3, name]))
-            if n in th_gramms:
-                th_gramms[n].append((data.u1, data.u2, data.u3))
+            n = self.bi.only('domain1', 'domain2').filter(domain1=data[0]).filter(domain2=data[1]).count()
+            if n in bi_gramms:
+                bi_gramms[n].append((data[0], data[1]))
             else:
-                th_gramms[n] = [(data.u1, data.u2, data.u3)]
+                bi_gramms[n] = [(data[0], data[1])]
             if n not in mass:
                 mass.append(n)
         mass.sort(reverse=True)
-        mass = mass[:30]
+        mass = mass[:15]
+        result_bid_gramms = {}
+        for n in mass:
+            for domains in bi_gramms[n]:
+                # times = self.bi.filter(domain1=domains[0]).filter(domain2=domains[1]).values_list(time1, time2)
+                # t = [t[1].seconds - t[0].seconds for t in times]
+                # v = None
+                # if t:
+                #     v = sum(t)/len(t)
+                result_bid_gramms[domains[0] + ", " + domains[1]] = n  # (max(t), v, t)
+
+        print('биграммы конец')
+        return result_bi_gramms, result_bid_gramms
+
+    def _threegramm(self):
+        print('триграммы начало')
+        th_gramms = {}
+        a = self.tri.only('url1', 'url2', 'url3').distinct('url1', 'url2', 'url3').values_list('url1', 'url2', 'url3')
+        mass = []
+        for data in a:
+            n =  self.tri.only('url1', 'url2', 'url3').filter(url1=data[0]).filter(url2=data[1]).filter(url3=data[2]).count()
+            if n in th_gramms:
+                th_gramms[n].append((data[0], data[1], data[2]))
+            else:
+                th_gramms[n] = [(data[0], data[1], data[2])]
+            if n not in mass:
+                mass.append(n)
+        mass.sort(reverse=True)
+        mass = mass[:10]
         result_gramms = {}
         for n in mass:
             for data in th_gramms[n]:
-                times = Log.objects.raw(query_time, [data[0], data[1], name, name, data[2], name])
-                t = [t.t1.seconds for t in times]
-                t2 = [t.t2.seconds for t in times]
-                v = None
-                v2 = None
-                if t:
-                    v = sum(t)/len(t)
-                if t2:
-                    v2 = sum(t2) / len(t2)
-                result_gramms[data[0] + ", " + data[1] + ", " + data[2]] = (max(t), v, t, max(t2), v2, t2)
-        return result_gramms
+                # times = Log.objects.raw(query_time, [data[0], data[1], self.username, self.username, self.finish_time, self.finish_time, data[2], self.username, self.finish_time])
+                # t = [t.t1.seconds for t in times]
+                # t2 = [t.t2.seconds for t in times]
+                # v = None
+                # v2 = None
+                # if t:
+                #     v = sum(t)/len(t)
+                # if t2:
+                #     v2 = sum(t2) / len(t2)
+                result_gramms[data[0] + ", " + data[1] + ", " + data[2]] = n# = (max(t), v, t, max(t2), v2, t2)
 
-    def _get_n_gramms(self, obj_name):
-        # биграммы obj1<>obj2
-        # самые частые биграммы(без повторений) и основная информация о них
-        bi_query = "SELECT DISTINCT ON " \
-                    "   (p1.obj, p2.obj)  p1.id as id, p1.obj as u1, p2.obj as u2 " \
-                    "FROM analyse_log p1" \
-                    "   JOIN analyse_log p2" \
-                    "      ON p1.id+1 = p2.id" \
-                    "      AND p1.obj <> p2.obj"\
-                    "      AND p1.start_computer = False" \
-                    "      AND p2.start_computer = False" \
-                    "      AND p1.seance = p2.seance" \
-                    "      AND p1.username = %s AND p2.username = %s"
-        # для подсчета количества каждой биграммы
-        bi_query2 = "SELECT " \
-                    "   p1.id " \
-                    "FROM analyse_log p1" \
-                    "   JOIN analyse_log p2" \
-                    "      ON p1.id+1 = p2.id" \
-                    "      AND p1.obj = %s" \
-                    "      AND p2.obj = %s" \
-                    "      AND p1.seance = p2.seance" \
-                    "      AND p1.username = %s AND p2.username = %s"
-        # пауза перед переходом в биграмме
-        bi_query_time = "SELECT " \
-                    "   p1.id, (p2.time - p1.time) as t2 " \
-                    "FROM analyse_log p1" \
-                    "   JOIN analyse_log p2" \
-                    "      ON p1.id+1 = p2.id" \
-                    "      AND p1.obj = %s" \
-                    "      AND p2.obj = %s" \
-                    "      AND p1.seance = p2.seance" \
-                    "      AND p1.username = %s AND p2.username = %s"
-        bigramm_params = [self.username, self.username]
-        obj_query = bi_query.replace('obj', obj_name)
-        obj_query2 = bi_query2.replace('obj', obj_name)
-        obj_query_time = bi_query_time.replace('obj', obj_name)
-        bigramms = self._bigramm(obj_query, obj_query2, obj_query_time, bigramm_params)
+        th_gramms = {}
+        a = self.tri.only('domain1', 'domain2', 'domain3').exclude(domain1=F('domain2')).exclude(domain2=F('domain3')).distinct('domain1', 'domain2', 'domain3').values_list('domain1', 'domain2', 'domain3')
+        mass = []
+        for data in a:
+            n = self.tri.only('domain1', 'domain2', 'domain3').filter(domain1=data[0]).filter(domain2=data[1]).filter(
+                domain3=data[2]).count()
+            if n in th_gramms:
+                th_gramms[n].append((data[0], data[1], data[2]))
+            else:
+                th_gramms[n] = [(data[0], data[1], data[2])]
+            if n not in mass:
+                mass.append(n)
+        mass.sort(reverse=True)
+        mass = mass[:10]
+        resultb_gramms = {}
+        for n in mass:
+            for data in th_gramms[n]:
+                # times = Log.objects.raw(query_time, [data[0], data[1], self.username, self.username, self.finish_time, self.finish_time, data[2], self.username, self.finish_time])
+                # t = [t.t1.seconds for t in times]
+                # t2 = [t.t2.seconds for t in times]
+                # v = None
+                # v2 = None
+                # if t:
+                #     v = sum(t)/len(t)
+                # if t2:
+                #     v2 = sum(t2) / len(t2)
+                resultb_gramms[data[0] + ", " + data[1] + ", " + data[2]] = n  # = (max(t), v, t, max(t2), v2, t2)
+        print('триграммы конец')
+        return result_gramms, resultb_gramms
 
-        # триграммы url1<>url2 or url2<>url3
-        th_query = "WITH table111 AS (SELECT DISTINCT ON " \
-                "   (p1.obj, p2.obj, p3.obj)  p1.id as id, p1.obj as u1, p2.obj as u2, p3.obj as u3 " \
-                "FROM analyse_log p1" \
-                "   JOIN analyse_log p2" \
-                "      ON p1.id+1 = p2.id" \
-                "      AND p1.start_computer = False" \
-                "      AND p2.start_computer = False" \
-                "      AND p1.seance = p2.seance" \
-                "      AND p1.username = %s " \
-                "      AND p2.username = %s"\
-                "   JOIN analyse_log p3" \
-                "      ON p1.id+2 = p3.id" \
-                "      AND p1.start_computer = False" \
-                "      AND p3.start_computer = False" \
-                "      AND p1.seance = p3.seance" \
-                "      AND p3.username = %s) "\
-                "SELECT * " \
-                "FROM table111 " \
-                "WHERE table111.u1 <> table111.u2 OR table111.u2 <> table111.u3"
-        th_query2 = "SELECT " \
-                "   p1.id as id " \
-                "FROM analyse_log p1" \
-                "   JOIN analyse_log p2" \
-                "      ON p1.id+1 = p2.id" \
-                "      AND p1.obj = %s" \
-                "      AND p2.obj = %s" \
-                "      AND p1.seance = p2.seance" \
-                "      AND p1.username = %s " \
-                "      AND p2.username = %s"\
-                "   JOIN analyse_log p3" \
-                "      ON p1.id+2 = p3.id" \
-                "      AND p3.obj = %s" \
-                "      AND p1.seance = p3.seance" \
-                "      AND p3.username = %s "
-        th_query_time = "SELECT " \
-                "   p1.id as id,  (p2.time - p1.time) as t1,  (p3.time - p2.time) as t2 " \
-                "FROM analyse_log p1" \
-                "   JOIN analyse_log p2" \
-                "      ON p1.id+1 = p2.id" \
-                "      AND p1.obj = %s" \
-                "      AND p2.obj = %s" \
-                "      AND p1.start_computer = False" \
-                "      AND p2.start_computer = False" \
-                "      AND p1.seance = p2.seance" \
-                "      AND p1.username = %s AND p2.username = %s"\
-                "   JOIN analyse_log p3" \
-                "      ON p1.id+2 = p3.id" \
-                "      AND p1.start_computer = False" \
-                "      AND p3.start_computer = False" \
-                "      AND p3.obj = %s" \
-                "      AND p1.seance = p3.seance" \
-                "      AND p3.username = %s "
-        three_query = th_query.replace('obj', obj_name)
-        three_query2 = th_query2.replace('obj', obj_name)
-        three_query_time = th_query_time.replace('obj', obj_name)
-        thgramms = self._threegramm(three_query, three_query2, three_query_time, self.username)
-
-        return bigramms, thgramms
 
     # Пункт 4: паузы до 5 минут
     def pause(self):
@@ -504,8 +483,9 @@ class Analyst:
                     "      AND p1.start_computer = False" \
                     "      AND p2.start_computer = False" \
                     "      AND p1.seance = p2.seance" \
-                    "      AND p1.username = %s AND p2.username = %s"
-        times = Log.objects.raw(pauses, [self.username, self.username])
+                    "      AND p1.username = %s AND p2.username = %s" \
+                    "      AND p1.time <= %s AND p2.time <= %s"
+        times = Log.objects.raw(pauses, [self.username, self.username, self.finish_time, self.finish_time])
         pause_statistic = {}
         for t in times:
             sec = t.t.seconds

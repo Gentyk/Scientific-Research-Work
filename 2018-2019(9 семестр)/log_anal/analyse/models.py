@@ -1,6 +1,6 @@
 from django.db import models
 
-
+# основной лог, с которым будут проводится действия
 class Log(models.Model):
     day = models.DateTimeField(db_index=True)   # день календаря
     local_time = models.DateTimeField(default=None) # часы минуты секунды
@@ -20,8 +20,33 @@ class Log(models.Model):
     username = models.CharField(db_index=True, default="I", max_length=50)
 
 
-class Easy(models.Model):
-    time = models.DateTimeField()
-    url = models.TextField(default="")
+# биграммы
+class Bigrams(models.Model):
+    seance = models.IntegerField(db_index=True, default=-1)
+    username = models.CharField(db_index=True, default="I", max_length=50)
+
+    time1 = models.DateTimeField()
+    url1 = models.TextField(db_index=True, default="")
+    domain1 = models.CharField(db_index=True, default="", max_length=100)
+    time2 = models.DateTimeField()
+    url2 = models.TextField(db_index=True, default="")
+    domain2 = models.CharField(db_index=True, default="", max_length=100)
+
+
+# триграммы
+class Trigrams(models.Model):
+    seance = models.IntegerField(db_index=True, default=-1)
+    username = models.CharField(db_index=True, default="I", max_length=50)
+
+    time1 = models.DateTimeField()
+    url1 = models.TextField(db_index=True, default="")
+    domain1 = models.CharField(db_index=True, default="", max_length=100)
+    time2 = models.DateTimeField()
+    url2 = models.TextField(db_index=True, default="")
+    domain2 = models.CharField(db_index=True, default="", max_length=100)
+    time3 = models.DateTimeField()
+    url3 = models.TextField(db_index=True, default="")
+    domain3 = models.CharField(db_index=True, default="", max_length=100)
+
 
 
