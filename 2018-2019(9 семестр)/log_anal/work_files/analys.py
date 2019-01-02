@@ -26,18 +26,22 @@ class Main:
         names = Log.objects.values_list('username').distinct()
         names = [name[0] for name in names]
         for name in names:
-            u_log = Log.objects.filter(username=name)
-            finish_time = u_log.earliest('time') + timedelta(days=PERIOD)
-            u_log = u_log.filter(time__lte=finish_time)
+            log = Log.objects.filter(username=name)
+            print(name)
+            finish_time = log.earliest('time').time + timedelta(days=PERIOD)
+
+            u_log = log.filter(time__lte=finish_time)
             bi_log = Bigrams.objects.filter(username=name).filter(time1__lte=finish_time).filter(time2__lte=finish_time)
             tri_log = Trigrams.objects.filter(username=name).filter(time2__lte=finish_time).filter(time3__lte=finish_time)
+
             a = Analyst(u_log, bi_log, tri_log, name, finish_time)
             a.activity_analyse()
-            path = './users/' + name + '_otch.txt'
-            with open(path, 'w') as f:
-                for k in a.result:
-                    s = k + ": " + str(a.result[k]) + "\n"
-                    f.writelines(s)
+            path = './users/' + name + '_otch.npy'
+            np.save(path, a.result)
+            # with open(path, 'w') as f:
+            #     for k in a.result:
+            #         s = k + ": " + str(a.result[k]) + "\n"
+            #         f.writelines(s)
                 #json.dump(a.result, f)
 
 
@@ -64,15 +68,15 @@ class Analyst(object):
         self.distribution_in_time()
         self.frequent_objects()
         self.n_gramms()
-        self.pause()
-        self.graphic_res()
+        #self.pause()
+        #self.graphic_res()
 
     # Пункт 0: самые общие данные о логе
     def start_treatment(self):
         # самая общая информация о логе, которая могла вас интересовать
         self.result['всего записей'] = self.n_clicks
-        start = self.log.latest('time')
-        end = self.log.latest('time')
+        start = self.log.earliest('time').time
+        end = self.log.latest('time').time
         time = end - start
         self.result['длительность снятия данных'] = str(time)
         self.result['начало записи лога'] = str(start)
@@ -194,13 +198,13 @@ class Analyst(object):
         frequent_domains = self._get_frequent_objects_list(all_domains, 'domain', NUMBER_FREQUENT_DOMAINS)
         self.result['частые домены'] = frequent_domains
 
-        # Пункт 2.2: время нахождения на одном ресурсе
-        url_time, url_clicks = self._duration_of_viewing_frequent_objects(frequent_urls, 'url')
-        domain_time, domain_clicks = self._duration_of_viewing_frequent_objects(frequent_domains, 'domain')
-        self.result['распределение пауз между кликами на частых url(когда не переключаемся на другой)'] = url_time
-        self.result['распределение количества кликов на частых url(когда не переключаемся на другой)'] = url_clicks
-        self.result['распределение пауз между кликами на частых доменах(когда не переключаемся на другой)'] = domain_time
-        self.result['распределение количества кликов на частых доменах(когда не переключаемся на другой)'] = domain_clicks
+        # # Пункт 2.2: время нахождения на одном ресурсе
+        # url_time, url_clicks = self._duration_of_viewing_frequent_objects(frequent_urls, 'url')
+        # domain_time, domain_clicks = self._duration_of_viewing_frequent_objects(frequent_domains, 'domain')
+        # self.result['распределение пауз между кликами на частых url(когда не переключаемся на другой)'] = url_time
+        # self.result['распределение количества кликов на частых url(когда не переключаемся на другой)'] = url_clicks
+        # self.result['распределение пауз между кликами на частых доменах(когда не переключаемся на другой)'] = domain_time
+        # self.result['распределение количества кликов на частых доменах(когда не переключаемся на другой)'] = domain_clicks
 
         # Пункт 2.3: карта кликов
         self._click_map(frequent_urls, 'url')
@@ -230,6 +234,7 @@ class Analyst(object):
         mass.sort(reverse=True)
         mass = mass[:numbers]
         frequent_objects = []
+        r1 = []
         for n in mass:
             for object in objects[n]:
                 if obj_type == 'domain':
@@ -238,7 +243,15 @@ class Analyst(object):
                     query = self.log.filter(url=object)
                 n_seance = query.values_list('seance').distinct().count()
                 frequent_objects.append((object, n, n / self.n_clicks, n_seance / self.seance))
-        return frequent_objects
+                r1.append(object)
+                if len(r1)>=20:
+                    r1 = r1[:20]
+                    break
+            if len(r1)>=20:
+                r1 = r1[:20]
+                break
+        #return frequent_objects
+        return r1
 
     def _duration_of_viewing_frequent_objects(self, list_fr_obj, name_obj):
         query = "SELECT " \
@@ -293,7 +306,7 @@ class Analyst(object):
         if not os.path.exists(path):
             os.makedirs(path)
         for data in frequent_objects:
-            obj = data[0]
+            obj = data#[0]
             if type_obj == 'domain':
                 mass_coordinates = self.log.filter(domain=obj).values_list(
                     'x_cursor_coordinates',
@@ -325,27 +338,29 @@ class Analyst(object):
                     matrix[y_point, x_point] += 1
                 except:
                     pass
-
-            px = []
-            py = []
-            a = []
-            cm = plt.cm.get_cmap('jet')
-            for y in range(HEIGHT):
-                for x in range(WIDTH):
-                    px.append(x)
-                    py.append(HEIGHT-y)
-                    a.append(int(matrix[y, x]) if int(matrix[y, x]) > 0 else None)
-
-            plt.scatter(px, py, c=a, cmap=cm)
-            plt.xlabel("x")
-            plt.ylabel("y")
-            plt.title(str(obj))
-            cbar = plt.colorbar()
-            cbar.set_label("elevation (m)", labelpad=+1)
-            #plt.show()
-            i+=1
-            plt.savefig(path+"\\"+type_obj+" "+self.username+" "+str(i)+".png")
-            plt.clf()
+            i += 1
+            np.save(path+"\\"+type_obj+" "+self.username+str(i), matrix)
+            # изображаем карту кликов
+            # px = []
+            # py = []
+            # a = []
+            # cm = plt.cm.get_cmap('jet')
+            # for y in range(HEIGHT):
+            #     for x in range(WIDTH):
+            #         px.append(x)
+            #         py.append(HEIGHT-y)
+            #         a.append(int(matrix[y, x]) if int(matrix[y, x]) > 0 else None)
+            #
+            # plt.scatter(px, py, c=a, cmap=cm)
+            # plt.xlabel("x")
+            # plt.ylabel("y")
+            # plt.title(str(obj))
+            # cbar = plt.colorbar()
+            # cbar.set_label("elevation (m)", labelpad=+1)
+            # #plt.show()
+            # i+=1
+            # plt.savefig(path+"\\"+type_obj+" "+self.username+" "+str(i)+".png")
+            # plt.clf()
 
     # Пункт 3: частые n-граммы
     def n_gramms(self):
@@ -353,10 +368,14 @@ class Analyst(object):
         Функция, которая получает информацию о биграммах и триграммах пользователя и записывает их в словарь
         """
         urls_bigrams, domains_bigrams = self._bigramm()
+        print(len(urls_bigrams))
+        print(len(domains_bigrams))
         self.result['url биграммы'] = urls_bigrams
         self.result['domain биграммы'] = domains_bigrams
 
-        urls_trigrams, domains_trigrams = self._bigramm()
+        urls_trigrams, domains_trigrams = self._trigramm()
+        print(len(urls_trigrams))
+        print(len(domains_trigrams))
         self.result['url триграммы'] = urls_trigrams
         self.result['domain триграммы'] = domains_trigrams
 
@@ -364,7 +383,6 @@ class Analyst(object):
         print('биграммы начало')
         bi_gramms = {}
         a = self.bi.only('url1', 'url2').distinct('url1', 'url2').values_list('url1', 'url2')
-        print(len(a))
         mass = []
         for data in a:
             n = self.bi.only('url1', 'url2').filter(url1=data[0]).filter(url2=data[1]).count()
@@ -376,6 +394,7 @@ class Analyst(object):
                 mass.append(n)
         mass.sort(reverse=True)
         mass = mass[:15]
+        r1 = []
         result_bi_gramms = {}
         for n in mass:
             for urls in bi_gramms[n]:
@@ -385,10 +404,15 @@ class Analyst(object):
                 # if t:
                 #     v = sum(t)/len(t)
                 result_bi_gramms[urls[0] + ", " + urls[1]] = n#(max(t), v, t)
+                if len(result_bi_gramms) >= 15:
+                    break
+            if len(result_bi_gramms) >= 15:
+                break
+
+
         bi_gramms = {}
         a = self.bi.only('domain1', 'domain2').exclude(domain1=F('domain2')).distinct('domain1', 'domain2').values_list(
             'domain1', 'domain2')
-        print(len(a))
         mass = []
         for data in a:
             n = self.bi.only('domain1', 'domain2').filter(domain1=data[0]).filter(domain2=data[1]).count()
@@ -400,6 +424,7 @@ class Analyst(object):
                 mass.append(n)
         mass.sort(reverse=True)
         mass = mass[:15]
+        r2 = mass[:]
         result_bid_gramms = {}
         for n in mass:
             for domains in bi_gramms[n]:
@@ -409,11 +434,15 @@ class Analyst(object):
                 # if t:
                 #     v = sum(t)/len(t)
                 result_bid_gramms[domains[0] + ", " + domains[1]] = n  # (max(t), v, t)
-
+                if len(result_bid_gramms) >= 15:
+                    break
+            if len(result_bid_gramms) >= 15:
+                break
         print('биграммы конец')
         return result_bi_gramms, result_bid_gramms
+        #return r1,r2
 
-    def _threegramm(self):
+    def _trigramm(self):
         print('триграммы начало')
         th_gramms = {}
         a = self.tri.only('url1', 'url2', 'url3').distinct('url1', 'url2', 'url3').values_list('url1', 'url2', 'url3')
@@ -428,6 +457,7 @@ class Analyst(object):
                 mass.append(n)
         mass.sort(reverse=True)
         mass = mass[:10]
+        r1 = mass[:]
         result_gramms = {}
         for n in mass:
             for data in th_gramms[n]:
@@ -441,7 +471,10 @@ class Analyst(object):
                 # if t2:
                 #     v2 = sum(t2) / len(t2)
                 result_gramms[data[0] + ", " + data[1] + ", " + data[2]] = n# = (max(t), v, t, max(t2), v2, t2)
-
+                if len(result_gramms) >= 10:
+                    break
+            if len(result_gramms) >= 10:
+                break
         th_gramms = {}
         a = self.tri.only('domain1', 'domain2', 'domain3').exclude(domain1=F('domain2')).exclude(domain2=F('domain3')).distinct('domain1', 'domain2', 'domain3').values_list('domain1', 'domain2', 'domain3')
         mass = []
@@ -456,6 +489,7 @@ class Analyst(object):
                 mass.append(n)
         mass.sort(reverse=True)
         mass = mass[:10]
+        r2 = mass[:]
         resultb_gramms = {}
         for n in mass:
             for data in th_gramms[n]:
@@ -469,9 +503,13 @@ class Analyst(object):
                 # if t2:
                 #     v2 = sum(t2) / len(t2)
                 resultb_gramms[data[0] + ", " + data[1] + ", " + data[2]] = n  # = (max(t), v, t, max(t2), v2, t2)
+                if len(resultb_gramms) >= 10:
+                    break
+            if len(resultb_gramms) >= 10:
+                break
         print('триграммы конец')
         return result_gramms, resultb_gramms
-
+        #return r1, r2
 
     # Пункт 4: паузы до 5 минут
     def pause(self):
@@ -520,7 +558,6 @@ class Analyst(object):
         ]
         for title in titles:
             self._horiz_diagr(title, self.result[title])
-
 
     def _simple_diagr(self, title, data_dict, ox = None, note = ""):
         title = title + " " + note
