@@ -3,9 +3,11 @@ import numpy as np
 from datetime import datetime, timedelta
 
 from analyse.models import Log
+from work_files.analys import WIDTH, HEIGHT
 
 PERIOD = 30
 CLICKS = 20
+COEFFICIENT = 1 / CLICKS
 
 class CreateVectors(object):
     def __init__(self, name):
@@ -13,15 +15,27 @@ class CreateVectors(object):
         self.finish_time = None
         self.urls = []
         self.domains = []
+        self.url_maps = {}
+        self.domain_maps = {}
 
     def run(self, bad_users):
+        # выкачиваем данные характерные именно для пользователя владельца из его отчета
         path = '.\\users\\vnames.csv'
         self.up_data()
 
+        # выкачиваем карты кликов всех пользователей, которые соответствуют урлам и доменам владельца
+        mass = [self.user] + bad_users
+        for i in mass:
+            map1, map2 = self.get_maps(i)
+            self.url_maps[i] = map1.copy()
+            self.domain_maps[i] = map2.copy()
+
+        # пишем в файл вектора владельца
         print('user ' + self.user + ' start writing')
         self.write_in_csv(self.user, path)
         print('user ' + self.user + ' success writing')
 
+        # пишем ветора для остальных
         for i in bad_users:
             print('user ' + i + ' start writing')
             self.write_in_csv(i, path)
@@ -39,6 +53,34 @@ class CreateVectors(object):
         self.dom_bigrams = [k.split(', ') for k in r_dict['domain биграммы']]
         self.url_trigrams = [k.split(', ') for k in r_dict['url триграммы']]
         self.dom_trigrams = [k.split(', ') for k in r_dict['domain триграммы']]
+
+    def get_maps(self, name):
+        """
+        Получаем карты кликов доменов и урлов в виде словарей. Например:
+            {
+                url1 : <карты кликов, соответсвующая url1>:;
+                ...
+            }
+
+        """
+        # урлы
+        url_matrix = {}
+        type_obj = 'url'
+        objects = [i[0] for i in Log.objects.filter(username=name).only(type_obj).distinct(type_obj).values_list(type_obj)]
+        names = [url for url in objects if url in self.urls]
+        for url in names:
+            outfile = ".\\users\\"+name+"\\"+type_obj+" "+name+str(self.urls.index(url) + 1) + ".npy"
+            url_matrix[url] = np.load(outfile)
+
+        # домены
+        domain_matrix = {}
+        type_obj = 'domain'
+        objects = [i[0] for i in Log.objects.filter(username=name).only(type_obj).distinct(type_obj).values_list(type_obj)]
+        names = [domain for domain in objects if domain in self.domains]
+        for domain in names:
+            outfile = ".\\users\\" + name + "\\" + type_obj + " " + name + str(self.domains.index(domain) + 1) + ".npy"
+            domain_matrix[domain] = np.load(outfile)
+        return url_matrix, domain_matrix
 
     def write_in_csv(self, name, path, training_period=None, num_file=None):
         """
@@ -69,6 +111,7 @@ class CreateVectors(object):
                 values = all_values[ind: ind+CLICKS]
                 current_time = values[0]['time']
 
+                # просто для удобства отслеживания записи дней
                 if old_day != current_time.day:
                     print("!"+str(current_time))
                     old_day = current_time.day
@@ -81,18 +124,22 @@ class CreateVectors(object):
                 res['daytime'] = vector_time.hour // 8
 
                 # счиатаем, сколько раз был на частых урлах и доменах
-                urls = [0 for i in range(len(self.urls))]
-                domains = [0 for i in range(len(self.domains))]
-                user_urls = [i['url'] for i in values]
+                res['u'] = 0
+                urls = [0.5 for i in range(len(self.urls))]
+                domains = [0.5 for i in range(len(self.domains))]
+                user_urls = [(i['id'], i['url']) for i in values]
                 for i in user_urls:
-                    if i in self.urls:
-                        urls[self.urls.index(i)] += 1
+                    if i[1] in self.urls:
+                        urls[self.urls.index(i[1])] += COEFFICIENT
+                        res['u'] += self.hit_ratio(i[0], 'url', i[1])
                 for i in range(len(urls)):
                     res['u' + str(i)] = urls[i]
-                user_domains = [i['domain'] for i in values]
+                res['d'] = 0
+                user_domains = [(i['id'], i['domain']) for i in values]
                 for i in user_domains:
-                    if i in self.domains:
-                        domains[self.domains.index(i)] += 1
+                    if i[1] in self.domains:
+                        domains[self.domains.index(i[1])] += COEFFICIENT
+                        res['d'] += self.hit_ratio(i[0], 'domain', i[1])
                 for i in range(len(domains)):
                     res['d' + str(i)] = domains[i]
 
@@ -145,7 +192,87 @@ class CreateVectors(object):
 
                 writer.writerow(res)
 
+    def hit_ratio(self, id, type_obj, obj):
+        res = 0
+        # находим текущию запись и регистрируем область клика
+        cl = Log.objects.get(pk=id)
+        if cl.start_computer:
+            return 0
+        c = [0 for i in range(6)]
+        c[0] = cl.x_cursor_coordinates
+        c[1] = cl.y_cursor_coordinates
+        c[2] = cl.x1_window_coordinates
+        c[4] = cl.y1_window_coordinates
+        c[3] = cl.x2_window_coordinates
+        c[5] = cl.y2_window_coordinates
+        try:
+            y_point = int((c[1] - c[4]) / ((c[5] - c[4]) / HEIGHT))
+            if y_point == HEIGHT:
+                y_point = HEIGHT - 1
+            x_point = int((c[0] - c[2]) / ((c[3] - c[2]) / HEIGHT))
+            if x_point == WIDTH:
+                x_point = WIDTH - 1
 
+
+
+
+            if type_obj == 'url':
+                # проверяем наличие такого клика у пользователя-владельца
+                matrix = self.url_maps[self.user][obj]
+                n_clicks = matrix[x_point, y_point]
+                if n_clicks:
+                    sum = np.sum(matrix)
+                    res = COEFFICIENT * 4 * n_clicks / sum
+                # если нету, то смотрим у "плохих пользователей" и вычитаем значение
+                else:
+                    names = [i for i in self.url_maps.keys() if i != self.user]
+                    mass = []
+                    for name in names:
+                        maps = self.url_maps[name]
+                        if obj in maps:
+                            matrix = maps[obj]
+                            n_clicks = matrix[x_point, y_point]
+                            if n_clicks:
+                                sum = np.sum(matrix)
+                                mass.append(-(COEFFICIENT * 4 * n_clicks / sum))
+                    if mass:
+                        res = min(mass)
+                    # если никто до этого так не кликал, то 0
+                    else:
+                        res = 0
+
+            if type_obj == 'domain':
+                # проверяем наличие такого клика у пользователя-владельца
+                matrix = self.domain_maps[self.user][obj]
+                n_clicks = matrix[x_point, y_point]
+                if n_clicks:
+                    sum = np.sum(matrix)
+                    res = COEFFICIENT * 4 * n_clicks / sum
+                # если нету, то смотрим у "плохих пользователей" и вычитаем значение
+                else:
+                    names = [i for i in self.domain_maps.keys() if i != self.user]
+                    mass = []
+                    for name in names:
+                        maps = self.domain_maps[name]
+                        if obj in maps:
+                            matrix = maps[obj]
+                            n_clicks = matrix[x_point, y_point]
+                            if n_clicks:
+                                sum = np.sum(matrix)
+                                mass.append(-(COEFFICIENT * 4 * n_clicks / sum))
+                    if mass:
+                        res = min(mass)
+                    # если никто до этого так не кликал, то 0
+                    else:
+                        res = 0
+
+            return res
+        except Exception as e:
+            print(e)
+            print(cl.time)
+            print(c)
+            tt = input()
+            return 0
 
 
 

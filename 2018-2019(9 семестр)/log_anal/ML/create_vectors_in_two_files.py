@@ -8,6 +8,13 @@ class CreateVectorsApart(create_vectors.CreateVectors):
     def run(self, bad_users):
         self.up_data()
 
+        # выкачиваем карты кликов всех пользователей, которые соответствуют урлам и доменам владельца
+        mass = [self.user] + bad_users
+        for i in mass:
+            map1, map2 = self.get_maps(i)
+            self.url_maps[i] = map1.copy()
+            self.domain_maps[i] = map2.copy()
+
         # обучающая выбока
         path = "TRAINING.csv"
         print('user ' + self.user + ' start writing')
