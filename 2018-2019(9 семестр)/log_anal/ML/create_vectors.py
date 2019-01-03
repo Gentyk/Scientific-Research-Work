@@ -2,7 +2,7 @@ import csv
 import numpy as np
 from datetime import datetime, timedelta
 
-from analyse.models import Log, Vectors
+from analyse.models import Log
 
 PERIOD = 30
 CLICKS = 20
@@ -15,15 +15,16 @@ class CreateVectors(object):
         self.domains = []
 
     def run(self, bad_users):
+        path = '.\\users\\vnames.csv'
         self.up_data()
 
         print('user ' + self.user + ' start writing')
-        self.write_in_csv(self.user)
+        self.write_in_csv(self.user, path)
         print('user ' + self.user + ' success writing')
 
         for i in bad_users:
             print('user ' + i + ' start writing')
-            self.write_in_csv(i)
+            self.write_in_csv(i, path)
             print('user ' + i + ' success writing')
 
     def up_data(self):
@@ -39,18 +40,28 @@ class CreateVectors(object):
         self.url_trigrams = [k.split(', ') for k in r_dict['url триграммы']]
         self.dom_trigrams = [k.split(', ') for k in r_dict['domain триграммы']]
 
-    def write_in_csv(self, name):
+    def write_in_csv(self, name, path, training_period=None, num_file=None):
         """
         Записывает в csv вектора пользователя name за период PERIOD
         """
         log = Log.objects.filter(username=name)
-        self.finish_time = log.earliest('time').time + timedelta(days=PERIOD)
-        current_time = log.earliest('time').time
-        all_values = log.filter(time__lte=self.finish_time).filter(time__gte=current_time).order_by('id').values()
-        size = log.filter(time__lte=self.finish_time).filter(time__gte=current_time).count()
+        if training_period == None and num_file == None:
+            # даные для тестирования и обучения вместе
+            current_time = log.earliest('time').time
+            self.finish_time = current_time + timedelta(days=PERIOD)
+        elif num_file == 1:
+            # обучение отдельно
+            current_time = log.earliest('time').time
+            self.finish_time = current_time + timedelta(days=training_period)
+        elif num_file == 2:
+            # тестирование отдельно
+            current_time = log.earliest('time').time + timedelta(days=training_period)
+            self.finish_time = log.earliest('time').time + timedelta(days=PERIOD)
 
-        with open('.\\users\\vnames.csv', 'a', newline='') as csvfile:
+        all_values = log.filter(time__lt=self.finish_time).filter(time__gte=current_time).order_by('id').values()
+        size = log.filter(time__lt=self.finish_time).filter(time__gte=current_time).count()
 
+        with open(path, 'a', newline='') as csvfile:
             flag = True
             old_day = current_time.day
             for ind in range(0, size - CLICKS, CLICKS):
