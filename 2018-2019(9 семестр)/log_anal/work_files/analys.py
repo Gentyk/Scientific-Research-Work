@@ -17,12 +17,16 @@ TOTAL_SECONDS = 10  # анализ пауз между включением ко
 TOTAL_SECONDS_IN_MIN = 3  # аналогично, но в течение минуты
 NUMBER_FREQUENT_URL = 20
 NUMBER_FREQUENT_DOMAINS = 20
-WIDTH = 32*5#320
-HEIGHT = 18*5#180
+WIDTH = 32*5
+HEIGHT = 18*5
 
 
 class Main:
     def __init__(self):
+        """
+        Просмотр всех пользователей в логах и запуск анализа для каждого из них. В результате будут созданы файлы с
+        данными о каждом.
+        """
         names = Log.objects.values_list('username').distinct()
         names = [name[0] for name in names]
         for name in names:
@@ -38,11 +42,11 @@ class Main:
             a.activity_analyse()
             path = './users/' + name + '_otch.npy'
             np.save(path, a.result)
+            # path = './users/' + name + '_otch.txt'
             # with open(path, 'w') as f:
             #     for k in a.result:
             #         s = k + ": " + str(a.result[k]) + "\n"
             #         f.writelines(s)
-                #json.dump(a.result, f)
 
 
 class Analyst(object):
@@ -198,13 +202,11 @@ class Analyst(object):
         frequent_domains = self._get_frequent_objects_list(all_domains, 'domain', NUMBER_FREQUENT_DOMAINS)
         self.result['частые домены'] = frequent_domains
 
-        # # Пункт 2.2: время нахождения на одном ресурсе
-        # url_time, url_clicks = self._duration_of_viewing_frequent_objects(frequent_urls, 'url')
-        # domain_time, domain_clicks = self._duration_of_viewing_frequent_objects(frequent_domains, 'domain')
-        # self.result['распределение пауз между кликами на частых url(когда не переключаемся на другой)'] = url_time
-        # self.result['распределение количества кликов на частых url(когда не переключаемся на другой)'] = url_clicks
-        # self.result['распределение пауз между кликами на частых доменах(когда не переключаемся на другой)'] = domain_time
-        # self.result['распределение количества кликов на частых доменах(когда не переключаемся на другой)'] = domain_clicks
+        # Пункт 2.2: среднее время между кликами при просмтривании частого ресурса
+        url_time = self._duration_of_viewing_frequent_objects(frequent_urls, 'url')
+        domain_time = self._duration_of_viewing_frequent_objects(frequent_domains, 'domain')
+        self.result['распределение пауз между кликами на частых url(когда не переключаемся на другой)'] = url_time
+        self.result['распределение пауз между кликами на частых доменах(когда не переключаемся на другой)'] = domain_time
 
         # Пункт 2.3: карта кликов
         self._click_map(frequent_urls, 'url')
@@ -253,50 +255,16 @@ class Analyst(object):
         #return frequent_objects
         return r1
 
-    def _duration_of_viewing_frequent_objects(self, list_fr_obj, name_obj):
-        query = "SELECT " \
-                    "   p2.id as id, p2.time as time " \
-                    "FROM analyse_log p1" \
-                    "   JOIN analyse_log p2" \
-                    "      ON p1.id+1 = p2.id" \
-                    "      AND p1.obj <> %s" \
-                    "      AND p2.obj = %s" \
-                    "      AND p1.seance = p2.seance" \
-                    "      AND p1.username = %s AND p2.username = %s " \
-                    "      AND p1.time <= %s AND p2.time <= %s" \
-                    "      OR  p1.id-1 = p2.id" \
-                    "      AND p1.obj <> %s" \
-                    "      AND p2.obj = %s" \
-                    "      AND p1.seance = p2.seance" \
-                    "      AND p1.username = %s AND p2.username = %s" \
-                    "      AND p1.time <= %s AND p2.time <= %s" \
-                    "      OR  p1.id+1 = p2.id" \
-                    "      AND p2.obj = %s" \
-                    "      AND p1.seance <> p2.seance" \
-                    "      AND p1.username = %s AND p2.username = %s" \
-                    "      AND p1.time <= %s AND p2.time <= %s" \
-                    "      OR  p1.id-1 = p2.id" \
-                    "      AND p2.obj = %s" \
-                    "      AND p1.seance <> p2.seance" \
-                    "      AND p1.username = %s AND p2.username = %s" \
-                    "      AND p1.time <= %s AND p2.time <= %s"
-        obj_query = query.replace('obj', name_obj)
+    def _duration_of_viewing_frequent_objects(self, list_fr_obj, type_obj):
         times = {}
-        clicks = {}
         for i in list_fr_obj:
-            obj = i[0]
-            times[obj] = []
-            clicks[obj] = []
-            params = [obj, obj, self.username, self.username, self.finish_time, self.finish_time,
-                      obj, obj, self.username, self.username, self.finish_time, self.finish_time,
-                      obj, self.username, self.username, self.finish_time, self.finish_time,
-                      obj, self.username, self.username, self.finish_time, self.finish_time,]
-            data = Log.objects.raw(obj_query, params)
-            a = len(data)
-            for i in range(a//2):
-                clicks[obj].append(data[i * 2 + 1].id - data[i * 2].id)
-                times[obj].append(data[i*2+1].time - data[i*2].time if data[i*2+1].time - data[i*2].time > timedelta(seconds=0) else timedelta(seconds=0))
-        return times, clicks
+            if type_obj == 'url':
+                data = self.bi.filter(url1=i).filter(url2=i).values_list('time2', 'time1')
+            if type_obj == 'domain':
+                data = self.bi.filter(domain1=i).filter(domain2=i).values_list('time2', 'time1')
+            mass = [(abs(d[0] - d[1])).seconds for d in data]
+            times[i] = sum(mass)/len(mass)
+        return times
 
     def _click_map(self, frequent_objects, type_obj):
         # создание карты кликов для списка объектов
@@ -340,6 +308,7 @@ class Analyst(object):
                     pass
             i += 1
             np.save(path+"\\"+type_obj+" "+self.username+str(i), matrix)
+
             # изображаем карту кликов
             # px = []
             # py = []
@@ -382,7 +351,7 @@ class Analyst(object):
     def _bigramm(self):
         print('биграммы начало')
         bi_gramms = {}
-        a = self.bi.only('url1', 'url2').distinct('url1', 'url2').values_list('url1', 'url2')
+        a = self.bi.only('url1', 'url2').exclude(url1=F('url2')).distinct('url1', 'url2').values_list('url1', 'url2')
         mass = []
         for data in a:
             n = self.bi.only('url1', 'url2').filter(url1=data[0]).filter(url2=data[1]).count()
@@ -394,16 +363,15 @@ class Analyst(object):
                 mass.append(n)
         mass.sort(reverse=True)
         mass = mass[:15]
-        r1 = []
         result_bi_gramms = {}
         for n in mass:
             for urls in bi_gramms[n]:
-                # times = self.bi.filter(url1=urls[0]).filter(url2=urls[1]).values_list(time1, time2)
-                # t = [t[1].seconds - t[0].seconds for t in times]
-                # v = None
-                # if t:
-                #     v = sum(t)/len(t)
-                result_bi_gramms[urls[0] + ", " + urls[1]] = n#(max(t), v, t)
+                times = self.bi.filter(url1=urls[0]).filter(url2=urls[1]).values_list('time1', 'time2')
+                mass_t = [(abs(t[1] - t[0])).seconds for t in times]
+                v = 0
+                if mass_t:
+                    v = sum(mass_t) / len(mass_t)
+                result_bi_gramms[urls[0] + ", " + urls[1]] = v#(max(t), v, t)
                 if len(result_bi_gramms) >= 15:
                     break
             if len(result_bi_gramms) >= 15:
@@ -424,23 +392,21 @@ class Analyst(object):
                 mass.append(n)
         mass.sort(reverse=True)
         mass = mass[:15]
-        r2 = mass[:]
         result_bid_gramms = {}
         for n in mass:
             for domains in bi_gramms[n]:
-                # times = self.bi.filter(domain1=domains[0]).filter(domain2=domains[1]).values_list(time1, time2)
-                # t = [t[1].seconds - t[0].seconds for t in times]
-                # v = None
-                # if t:
-                #     v = sum(t)/len(t)
-                result_bid_gramms[domains[0] + ", " + domains[1]] = n  # (max(t), v, t)
+                times = self.bi.filter(domain1=domains[0]).filter(domain2=domains[1]).values_list('time1', 'time2')
+                mass_t = [(abs(t[1] - t[0])).seconds for t in times]
+                v = 0
+                if mass_t:
+                    v = sum(mass_t)/len(mass_t)
+                result_bid_gramms[domains[0] + ", " + domains[1]] = v  # (max(t), v, t)
                 if len(result_bid_gramms) >= 15:
                     break
             if len(result_bid_gramms) >= 15:
                 break
         print('биграммы конец')
         return result_bi_gramms, result_bid_gramms
-        #return r1,r2
 
     def _trigramm(self):
         print('триграммы начало')
@@ -457,24 +423,24 @@ class Analyst(object):
                 mass.append(n)
         mass.sort(reverse=True)
         mass = mass[:10]
-        r1 = mass[:]
         result_gramms = {}
         for n in mass:
             for data in th_gramms[n]:
-                # times = Log.objects.raw(query_time, [data[0], data[1], self.username, self.username, self.finish_time, self.finish_time, data[2], self.username, self.finish_time])
-                # t = [t.t1.seconds for t in times]
-                # t2 = [t.t2.seconds for t in times]
-                # v = None
-                # v2 = None
-                # if t:
-                #     v = sum(t)/len(t)
-                # if t2:
-                #     v2 = sum(t2) / len(t2)
-                result_gramms[data[0] + ", " + data[1] + ", " + data[2]] = n# = (max(t), v, t, max(t2), v2, t2)
+                times = self.tri.filter(url1=data[0]).filter(url2=data[1]).filter(url3=data[2]).values_list('time1', 'time2', 'time3')
+                v = 0
+                v2 = 0
+                mass_t = [(abs(t[1] - t[0])).seconds for t in times]
+                mass_t2 = [(abs(t[2] - t[1])).seconds for t in times]
+                if mass_t:
+                    v = sum(mass_t) / len(mass_t)
+                if mass_t2:
+                    v2 = sum(mass_t2) / len(mass_t2)
+                result_gramms[data[0] + ", " + data[1] + ", " + data[2]] = (v, v2)# = (max(t), v, t, max(t2), v2, t2)
                 if len(result_gramms) >= 10:
                     break
             if len(result_gramms) >= 10:
                 break
+
         th_gramms = {}
         a = self.tri.only('domain1', 'domain2', 'domain3').exclude(domain1=F('domain2')).exclude(domain2=F('domain3')).distinct('domain1', 'domain2', 'domain3').values_list('domain1', 'domain2', 'domain3')
         mass = []
@@ -489,51 +455,27 @@ class Analyst(object):
                 mass.append(n)
         mass.sort(reverse=True)
         mass = mass[:10]
-        r2 = mass[:]
         resultb_gramms = {}
         for n in mass:
             for data in th_gramms[n]:
-                # times = Log.objects.raw(query_time, [data[0], data[1], self.username, self.username, self.finish_time, self.finish_time, data[2], self.username, self.finish_time])
-                # t = [t.t1.seconds for t in times]
-                # t2 = [t.t2.seconds for t in times]
-                # v = None
-                # v2 = None
-                # if t:
-                #     v = sum(t)/len(t)
-                # if t2:
-                #     v2 = sum(t2) / len(t2)
-                resultb_gramms[data[0] + ", " + data[1] + ", " + data[2]] = n  # = (max(t), v, t, max(t2), v2, t2)
+                times = self.tri.filter(url1=data[0]).filter(url2=data[1]).filter(url3=data[2]).values_list('time1',
+                                                                                                            'time2',
+                                                                                                            'time3')
+                v = 0
+                v2 = 0
+                mass_t = [(abs(t[1] - t[0])).seconds for t in times]
+                mass_t2 = [(abs(t[2] - t[1])).seconds for t in times]
+                if mass_t:
+                    v = sum(mass_t) / len(mass_t)
+                if mass_t2:
+                    v2 = sum(mass_t2) / len(mass_t2)
+                resultb_gramms[data[0] + ", " + data[1] + ", " + data[2]] = (v, v2)  # = (max(t), v, t, max(t2), v2, t2)
                 if len(resultb_gramms) >= 10:
                     break
             if len(resultb_gramms) >= 10:
                 break
         print('триграммы конец')
         return result_gramms, resultb_gramms
-        #return r1, r2
-
-    # Пункт 4: паузы до 5 минут
-    def pause(self):
-        pauses = "SELECT " \
-                    "   p1.id, (p2.time - p1.time) as t " \
-                    "FROM analyse_log p1" \
-                    "   JOIN analyse_log p2" \
-                    "      ON p1.id+1 = p2.id" \
-                    "      AND p1.start_computer = False" \
-                    "      AND p2.start_computer = False" \
-                    "      AND p1.seance = p2.seance" \
-                    "      AND p1.username = %s AND p2.username = %s" \
-                    "      AND p1.time <= %s AND p2.time <= %s"
-        times = Log.objects.raw(pauses, [self.username, self.username, self.finish_time, self.finish_time])
-        pause_statistic = {}
-        for t in times:
-            sec = t.t.seconds
-            if sec < 300 and sec > 0:
-                k = sec // 10
-                if k in pause_statistic:
-                    pause_statistic[k] += 1
-                else:
-                    pause_statistic[k] = 1
-        self.result['распределение пауз'] = pause_statistic
 
     # Пункт 5: графический отчет
     def graphic_res(self):
@@ -619,9 +561,3 @@ class Analyst(object):
         ax.invert_yaxis()
         plt.savefig(path + ".png")
         plt.clf()
-
-
-
-
-
-
