@@ -5,54 +5,65 @@ from datetime import datetime, timedelta
 from analyse.models import Log
 from work_files.analys import WIDTH, HEIGHT
 
+from ML import ML
+
 PERIOD = 30
+TRAINING = int(PERIOD*0.7)
 CLICKS = 20
 COEFFICIENT = 1 / CLICKS
 
 class CreateVectors(object):
-    def __init__(self, name):
-        self.user = name
+    """
+    Создадим вектор для классификации. Просто тупо:
+    - имя
+    - день недели
+    - часть дня
+    - область клика по Х
+    - область клика по У
+    - домен
+    - урл
+    - добавили список частых урлов и доменов
+    """
+    def __init__(self):
         self.finish_time = None
         self.urls = []
         self.domains = []
-        self.url_maps = {}
-        self.domain_maps = {}
+        self.fr_urls = []
+        self.fr_domains = []
 
-    def run(self, bad_users):
-        # выкачиваем данные характерные именно для пользователя владельца из его отчета
-        path = '.\\users\\vnames.csv'
-        self.up_data()
 
-        # выкачиваем карты кликов всех пользователей, которые соответствуют урлам и доменам владельца
-        mass = [self.user] + bad_users
+    def run(self):
+        train_vectors = []
+        test_vectors = []
+        mass = ['ys', 'bv']#[name[0] for name in Log.objects.only('username').distinct('username').values_list('username')]
+        for name in mass:
+            self.up_data(name)
+
+        # обучающая выбока
+        path = "siTRAINING.csv"
         for i in mass:
-            map1, map2 = self.get_maps(i)
-            self.url_maps[i] = map1.copy()
-            self.domain_maps[i] = map2.copy()
+            print('user ' + i + ' start writing training data')
+            train_vectors += self.create_vectors(i, training_period=TRAINING, num_file=1)
+            print('user ' + i + ' success writing training data')
+        self.write_in_csv(path, train_vectors)
 
-        # пишем в файл вектора владельца
-        print('user ' + self.user + ' start writing')
-        self.write_in_csv(self.user, path)
-        print('user ' + self.user + ' success writing')
+        # выборка для тестирования
+        path = "siTESTING.csv"
+        for i in mass:
+            print('user ' + i + ' start writing testing data')
+            test_vectors += self.create_vectors(i, training_period=TRAINING, num_file=2)
+            print('user ' + i + ' success writing testing data')
+        self.write_in_csv(path, test_vectors)
+        ML.ml(mass, 'si')
 
-        # пишем ветора для остальных
-        for i in bad_users:
-            print('user ' + i + ' start writing')
-            self.write_in_csv(i, path)
-            print('user ' + i + ' success writing')
-
-    def up_data(self):
+    def up_data(self, name):
         """
         Достаем данные специфичные для пользоваетля-владельца
         """
-        r_dict = np.load('.\\users\\'+self.user+'_otch.npy').item()
-        self.urls = r_dict['частые url']
-        self.domains = r_dict['частые домены']
-
-        self.url_bigrams = [k.split(', ') for k in r_dict['url биграммы']]
-        self.dom_bigrams = [k.split(', ') for k in r_dict['domain биграммы']]
-        self.url_trigrams = [k.split(', ') for k in r_dict['url триграммы']]
-        self.dom_trigrams = [k.split(', ') for k in r_dict['domain триграммы']]
+        r_dict = np.load('.\\users\\'+ name +'_otch.npy').item()
+        # частые объекты всех пользователей без повторений
+        self.fr_urls = list(set(self.fr_urls + r_dict['частые url']))
+        self.fr_domains = list(set(self.fr_domains + r_dict['частые домены']))
 
     def get_maps(self, name):
         """
@@ -82,16 +93,9 @@ class CreateVectors(object):
             domain_matrix[domain] = np.load(outfile)
         return url_matrix, domain_matrix
 
-    def write_in_csv(self, name, path, training_period=None, num_file=None):
-        """
-        Записывает в csv вектора пользователя name за период PERIOD
-        """
+    def create_vectors(self, name, training_period=None, num_file=None):
         log = Log.objects.filter(username=name)
-        if training_period == None and num_file == None:
-            # даные для тестирования и обучения вместе
-            current_time = log.earliest('time').time
-            self.finish_time = current_time + timedelta(days=PERIOD)
-        elif num_file == 1:
+        if num_file == 1:
             # обучение отдельно
             current_time = log.earliest('time').time
             self.finish_time = current_time + timedelta(days=training_period)
@@ -101,96 +105,43 @@ class CreateVectors(object):
             self.finish_time = log.earliest('time').time + timedelta(days=PERIOD)
 
         all_values = log.filter(time__lt=self.finish_time).filter(time__gte=current_time).order_by('id').values()
-        size = log.filter(time__lt=self.finish_time).filter(time__gte=current_time).count()
+        result = []
+        old_day = current_time.day
+        for value in all_values:
+            res = {'username': name}
+            current_time = value['time']
 
-        with open(path, 'a', newline='') as csvfile:
-            flag = True
-            old_day = current_time.day
-            for ind in range(0, size - CLICKS, CLICKS):
-                res = {'username': name}
-                values = all_values[ind: ind+CLICKS]
-                current_time = values[0]['time']
+            # просто для удобства отслеживания записи дней
+            if old_day != current_time.day:
+                #print("!" + str(current_time))
+                old_day = current_time.day
 
-                # просто для удобства отслеживания записи дней
-                if old_day != current_time.day:
-                    print("!"+str(current_time))
-                    old_day = current_time.day
+            # день и время берем по медиане
+            vector_time = value['time']
+            res['weekday'] = vector_time.weekday()
+            res['daytime'] = vector_time.hour // 8
+            if not (value['domain'] in self.domains):
+                self.domains.append(value['domain'])
+            res['d'] = self.domains.index(value['domain'])
+            if not (value['url'] in self.urls):
+                self.urls.append(value['url'])
 
-                # день и время берем по медиане
-                vector_times = [i['time'] for i in values]
-                vector_times.sort()
-                vector_time = vector_times[9]
-                res['weekday'] = vector_time.weekday()
-                res['daytime'] = vector_time.hour // 8
+            res['f_d'] = (1 if value['domain'] in self.fr_domains else 0)
+            res['f_u'] = (1 if value['url'] in self.fr_urls else 0)
+            res['start_computer'] = value['start_computer']
+            result.append(res)
+        return result
 
-                # счиатаем, сколько раз был на частых урлах и доменах
-                res['u'] = 0
-                urls = [0.5 for i in range(len(self.urls))]
-                domains = [0.5 for i in range(len(self.domains))]
-                user_urls = [(i['id'], i['url']) for i in values]
-                for i in user_urls:
-                    if i[1] in self.urls:
-                        urls[self.urls.index(i[1])] += COEFFICIENT
-                        res['u'] += self.hit_ratio(i[0], 'url', i[1])
-                for i in range(len(urls)):
-                    res['u' + str(i)] = urls[i]
-                res['d'] = 0
-                user_domains = [(i['id'], i['domain']) for i in values]
-                for i in user_domains:
-                    if i[1] in self.domains:
-                        domains[self.domains.index(i[1])] += COEFFICIENT
-                        res['d'] += self.hit_ratio(i[0], 'domain', i[1])
-                for i in range(len(domains)):
-                    res['d' + str(i)] = domains[i]
 
-                # если был факт старта компа
-                start = 0
-                deviation = 0
-                starts = [i['start_computer'] for i in values]
-                if any(starts):
-                    times = [(i['time'], i['url']) for i in values]
-                    for i in range(CLICKS):
-                        if starts[i] and i+1<CLICKS and times[i+1][1]:
-                            start += 1
-                            deviation = (times[i+1][0] - times[i][0]).seconds
-                res['start'] = start
-                res['dev'] = deviation
-
-                # проверяем наличие биграмм и триграмм
-                url_bi = [0 for i in range(len(self.url_bigrams))]
-                dom_bi = [0 for i in range(len(self.dom_bigrams))]
-                url_tri = [0 for i in range(len(self.url_trigrams))]
-                dom_tri = [0 for i in range(len(self.dom_trigrams))]
-                url_and_dom = [(i['url'], i['domain']) for i in values]
-                n = len(url_and_dom) - 1
-                for i in range(n):
-                    u = [url_and_dom[i][0], url_and_dom[i + 1][0]]
-                    if u in self.url_bigrams:
-                        url_bi[self.url_bigrams.index(u)] += 1
-
-                    d = [url_and_dom[i][1], url_and_dom[i + 1][1]]
-                    if d in self.dom_bigrams:
-                        dom_bi[self.dom_bigrams.index(d)] += 1
-
-                    if i+2 <= n:
-                        u = [url_and_dom[i][0], url_and_dom[i + 1][0], url_and_dom[i + 2][0]]
-                        if u in self.url_trigrams:
-                            url_tri[self.url_trigrams.index(u)] += 1
-
-                        d = [url_and_dom[i][1], url_and_dom[i + 1][1], url_and_dom[i + 2][1]]
-                        if d in self.dom_trigrams:
-                            dom_tri[self.dom_trigrams.index(d)] += 1
-                for i in range(len(dom_bi)):
-                    res['d_bi' + str(i)] = dom_bi[i]
-                for i in range(len(dom_tri)):
-                    res['d_tri' + str(i)] = dom_tri[i]
-
-                if flag:
-                    fieldnames = list(res.keys())
-                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                    flag = False
-
-                writer.writerow(res)
+    def write_in_csv(self, path, vectors):
+        """
+        Записывает в csv вектора пользователя
+        """
+        fieldnames = list(vectors[0].keys())
+        with open(path, 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            for vector in vectors:
+                writer.writerow(vector)
 
     def hit_ratio(self, id, type_obj, obj):
         res = 0

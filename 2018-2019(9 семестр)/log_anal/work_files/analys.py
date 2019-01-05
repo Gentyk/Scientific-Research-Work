@@ -28,6 +28,7 @@ class Main:
         данными о каждом.
         """
         names = Log.objects.values_list('username').distinct()
+        print(names)
         names = [name[0] for name in names]
         for name in names:
             log = Log.objects.filter(username=name)
@@ -35,8 +36,8 @@ class Main:
             finish_time = log.earliest('time').time + timedelta(days=PERIOD)
 
             u_log = log.filter(time__lte=finish_time)
-            bi_log = Bigrams.objects.filter(username=name).filter(time1__lte=finish_time).filter(time2__lte=finish_time)
-            tri_log = Trigrams.objects.filter(username=name).filter(time2__lte=finish_time).filter(time3__lte=finish_time)
+            bi_log = Bigrams.objects.filter(username=name).filter(time1__lt=finish_time).filter(time2__lte=finish_time)
+            tri_log = Trigrams.objects.filter(username=name).filter(time2__lt=finish_time).filter(time3__lte=finish_time)
 
             a = Analyst(u_log, bi_log, tri_log, name, finish_time)
             a.activity_analyse()
@@ -154,40 +155,21 @@ class Analyst(object):
         self.result['распределение по дням недели и времени суток'] = week_time_abs # если день брать за 100%
 
         # время запуска chrome после входа в систему
-        start_brows = {}
-        start_brows_min = {}
-        starts = self.log.filter(start_computer=True)
-        starts_n = starts.count()
-        starts = starts.values_list('id', 'time')
-        starts_min = 0
+        start_brows = []
+        start_brows_3min = []
+        starts = self.log.filter(start_computer=True).values_list('id', 'time')
         for id, time in starts:
-            try:
+            if self.log.get(pk=(id + 1)).url:
                 time2 = self.log.get(pk=(id + 1)).time
-                pause = time2 - time
-                pause_key = pause.seconds #// TOTAL_SECONDS
-                if pause_key in start_brows:
-                    start_brows[pause_key] += 1
+                pause = (abs(time - time2)).seconds
+                if pause >= 180:
+                    start_brows.append(pause)
                 else:
-                    start_brows[pause_key] = 1
-                if pause.seconds <= 60:
-                    starts_min += 1
-                    pause_key = pause.seconds #// TOTAL_SECONDS_IN_MIN
-                    if pause_key in start_brows_min:
-                        start_brows_min[pause_key] += 1
-                    else:
-                        start_brows_min[pause_key] = 1
-            except:
-                pass
-        #self.result['количество пауз между запуском компа и браузера'] = start_brows
-        #self.result['количество пауз между запуском компа и браузера(минута)(в количестве)'] = start_brows_min
-        t = start_brows.copy()
-        t2 = start_brows_min.copy()
-        for pause in t:
-            t[pause] = t[pause] / starts_n
-        for pause_key in t2:
-            t2[pause_key] = t2[pause_key] / starts_min
-        self.result['распределение пауз между запуском компа и браузера'] = t
-        self.result['распределение пауз между запуском компа и браузера(минута)'] = t2
+                    start_brows_3min.append(pause)
+        self.result['средняя пауза между запуском компа и браузера(>3min)'] = (sum(start_brows) / len(start_brows)
+                                                                               if len(start_brows) > 0 else 0)
+        self.result['средняя пауза между запуском компа и браузера(<3min)'] = (sum(start_brows_3min) / len(start_brows_3min)
+                                                                               if len(start_brows_3min) > 0 else 0)
 
     # Пункт 2: получение частых объектов (url-ов и доменов)
     def frequent_objects(self):
@@ -256,6 +238,16 @@ class Analyst(object):
         return r1
 
     def _duration_of_viewing_frequent_objects(self, list_fr_obj, type_obj):
+        """
+        ПОлсчет средней из всех пауз, когда пользователь сидит на одном и том же частом ресурсе
+        :param list_fr_obj: массив частых урлов/доменов
+        :param type_obj: тип объекта 'url'/'damain'
+        :return: словарь вида:
+                {
+                    url1 : средняя пауза(в секундах),
+                    ...
+                }
+        """
         times = {}
         for i in list_fr_obj:
             if type_obj == 'url':
