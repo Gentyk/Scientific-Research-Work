@@ -11,7 +11,7 @@ from pytz import timezone
 
 from analyse.models import Bigrams, Log, Trigrams
 
-PERIOD = 24 # период времени в днях из которого 70% будут использоваться для обучения, а 30% для тетстирования
+PERIOD = 25 # период времени в днях из которого 70% будут использоваться для обучения, а 30% для тетстирования
 TIMES_OF_DAY = 8  # на сколько поделим день для анализа активности за день
 TOTAL_SECONDS = 10  # анализ пауз между включением компа и браузера -  шаг(диапазо)
 TOTAL_SECONDS_IN_MIN = 3  # аналогично, но в течение минуты
@@ -31,18 +31,23 @@ class Main:
         print(names)
         names = [name[0] for name in names]
         for name in names:
+            print("0")
             log = Log.objects.filter(username=name)
             print(name)
             finish_time = log.earliest('time').time + timedelta(days=PERIOD)
 
-            u_log = log.filter(time__lte=finish_time)
-            bi_log = Bigrams.objects.filter(username=name).filter(time1__lt=finish_time).filter(time2__lte=finish_time)
-            tri_log = Trigrams.objects.filter(username=name).filter(time2__lt=finish_time).filter(time3__lte=finish_time)
+            u_log = log.filter(time__lt=finish_time)
+            bi_log = Bigrams.objects.filter(username=name).filter(time1__lt=finish_time).filter(time2__lt=finish_time)
+            tri_log = Trigrams.objects.filter(username=name).filter(time2__lt=finish_time).filter(time3__lt=finish_time)
 
+            print("1")
             a = Analyst(u_log, bi_log, tri_log, name, finish_time)
+            print("2")
             a.activity_analyse()
+            print("3")
             path = './users/' + name + '_otch.npy'
             np.save(path, a.result)
+            print("4")
             # path = './users/' + name + '_otch.txt'
             # with open(path, 'w') as f:
             #     for k in a.result:
@@ -69,8 +74,8 @@ class Analyst(object):
         if not os.path.exists(path):
             os.makedirs(path)
         # последовательный анализ лога по пуктам
-        self.start_treatment()
-        self.distribution_in_time()
+        #self.start_treatment()
+        #self.distribution_in_time()
         self.frequent_objects()
         self.n_gramms()
         #self.pause()
@@ -177,6 +182,7 @@ class Analyst(object):
         # Пункт 2.1: в скольки процентах сеансов мы встречаем частые объекты
         # данные возвращаются в виде:
         # [(объект, количество кликов, относительное количество кликов, пункт 2.1), ...]
+
         all_urls = [url[0] for url in self.log.values_list('url').distinct()]
         frequent_urls = self._get_frequent_objects_list(all_urls, 'url', NUMBER_FREQUENT_URL)
         self.result['частые url'] = frequent_urls

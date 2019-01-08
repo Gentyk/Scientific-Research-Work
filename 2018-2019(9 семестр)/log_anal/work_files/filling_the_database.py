@@ -92,7 +92,7 @@ class Filling(object):
         start = log.earliest('seance').seance
         end = log.latest('seance').seance
         for i in range(start, end+1):
-            values = log.filter(seance=i).values('time', 'url', 'domain')
+            values = log.filter(seance=i).order_by('id').values('time', 'url', 'domain')
             n = len(values)
             if n > 1:
                 for j in range(n-3):
