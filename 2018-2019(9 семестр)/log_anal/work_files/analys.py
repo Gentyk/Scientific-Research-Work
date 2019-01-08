@@ -197,8 +197,8 @@ class Analyst(object):
         self.result['распределение пауз между кликами на частых доменах(когда не переключаемся на другой)'] = domain_time
 
         # Пункт 2.3: карта кликов
-        self._click_map(frequent_urls, 'url')
-        self._click_map(frequent_domains, 'domain')
+        # self._click_map(frequent_urls, 'url')
+        # self._click_map(frequent_domains, 'domain')
 
     def _get_frequent_objects_list(self, obj_list, obj_type, numbers):
         # возвращает массив частых объектов в виде:
@@ -369,7 +369,7 @@ class Analyst(object):
                 v = 0
                 if mass_t:
                     v = sum(mass_t) / len(mass_t)
-                result_bi_gramms[urls[0] + ", " + urls[1]] = v#(max(t), v, t)
+                result_bi_gramms[tuple(urls[0], urls[1])] = v#(max(t), v, t)
                 if len(result_bi_gramms) >= 15:
                     break
             if len(result_bi_gramms) >= 15:
@@ -398,7 +398,7 @@ class Analyst(object):
                 v = 0
                 if mass_t:
                     v = sum(mass_t)/len(mass_t)
-                result_bid_gramms[domains[0] + ", " + domains[1]] = v  # (max(t), v, t)
+                result_bid_gramms[tuple(domains[0], domains[1])] = v  # (max(t), v, t)
                 if len(result_bid_gramms) >= 15:
                     break
             if len(result_bid_gramms) >= 15:
@@ -433,7 +433,7 @@ class Analyst(object):
                     v = sum(mass_t) / len(mass_t)
                 if mass_t2:
                     v2 = sum(mass_t2) / len(mass_t2)
-                result_gramms[data[0] + ", " + data[1] + ", " + data[2]] = (v, v2)# = (max(t), v, t, max(t2), v2, t2)
+                result_gramms[tuple(data[0], data[1], data[2])] = (v, v2)# = (max(t), v, t, max(t2), v2, t2)
                 if len(result_gramms) >= 10:
                     break
             if len(result_gramms) >= 10:
@@ -456,9 +456,8 @@ class Analyst(object):
         resultb_gramms = {}
         for n in mass:
             for data in th_gramms[n]:
-                times = self.tri.filter(url1=data[0]).filter(url2=data[1]).filter(url3=data[2]).values_list('time1',
-                                                                                                            'time2',
-                                                                                                            'time3')
+                times = self.tri.filter(url1=data[0]).filter(url2=data[1]).filter(url3=data[2]).\
+                    values_list('time1', 'time2', 'time3')
                 v = 0
                 v2 = 0
                 mass_t = [(abs(t[1] - t[0])).seconds for t in times]
@@ -467,7 +466,7 @@ class Analyst(object):
                     v = sum(mass_t) / len(mass_t)
                 if mass_t2:
                     v2 = sum(mass_t2) / len(mass_t2)
-                resultb_gramms[data[0] + ", " + data[1] + ", " + data[2]] = (v, v2)  # = (max(t), v, t, max(t2), v2, t2)
+                resultb_gramms[tuple(data[0], data[1], data[2])] = (v, v2)  # = (max(t), v, t, max(t2), v2, t2)
                 if len(resultb_gramms) >= 10:
                     break
             if len(resultb_gramms) >= 10:
