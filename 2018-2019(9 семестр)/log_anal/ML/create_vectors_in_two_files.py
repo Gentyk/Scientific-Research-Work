@@ -2,6 +2,9 @@ import csv
 from datetime import datetime, timedelta
 import numpy as np
 import xlsxwriter
+import vk_api
+import random
+import json
 
 from analyse.models import Log
 from ML import ML
@@ -25,11 +28,11 @@ class CreateVectorsApart(object):
     - средняя пауза в секундах ()
     - частые url всех пользователей (int [0, CLICKS])
     - частые домены всех пользователей (int [0, CLICKS])
-    -! для каждого частого url и домена есть WIDTH * HEIGHT столбцов, которые показывают сколько кликов в эту область (int [0, CLICKS])
+    - для каждого частого url и домена есть WIDTH * HEIGHT столбцов, которые показывают сколько кликов в эту область (int [0, CLICKS])
     - частые биграммы всех пользователей (int [0, CLICKS-1])
-    -! для каждой частой биграммы считаем паузу. Если несколько, то среднюю среди пауз.
+    - для каждой частой биграммы считаем паузу. Если несколько, то среднюю среди пауз.
     - частые триграммы всех пользователей (int [0, CLICKS-2])
-    -! для каждой частой триграммы считаем паузу. Если несколько, то среднюю среди пауз.
+    - для каждой частой триграммы считаем паузу. Если несколько, то среднюю среди пауз.
     """
     def __init__(self):
         self.finish_time = None
@@ -48,13 +51,17 @@ class CreateVectorsApart(object):
         self.url_trigrams_user = {}
         self.dom_trigrams_user = {}
 
+        self.user_flag = {}
+
     def run(self, mode = 'normal'):
         mass = ['bv', 'ro']#, 'ys', 'mk', 'dy']#[name[0] for name in Log.objects.only('username').distinct('username').values_list('username')]
 
         # иногда надо проверить обучающую выборку
         if mode == 'analysis':
             for name in mass:
+
                 self.up_data(name, mode)
+
             for i in mass:
                 print('user ' + i + ' start writing training data')
                 train_vectors = self.create_vectors_analyse(i)
@@ -69,32 +76,44 @@ class CreateVectorsApart(object):
             train = []
             test = []
 
-            # обучающая выбока
-            for i in mass:
-                print('user ' + i + ' start writing training data')
-                result_by_file, train_vectors = self.create_vectors(i, num_file=1)
-                print('user ' + i + ' success writing training data')
-                train += result_by_file[:]
-                X_train += train_vectors[:]
-                Y_train += [i for j in range(len(train_vectors))]
+            for name in mass:
+                self.user_flag[name] = False
+                self.up_data(name)
 
-            # выборка для тестирования
-            for i in mass:
-                print('user ' + i + ' start writing testing data')
-                result_by_file, test_vectors = self.create_vectors(i, num_file=2)
-                print('user ' + i + ' success writing testing data')
-                test += result_by_file[:]
-                X_test += test_vectors[:]
-                Y_test += [i for j in range(len(test_vectors))]
+            try:
+                # обучающая выбока
+                for i in mass:
+                    print('user ' + i + ' start writing training data')
+                    result_by_file, train_vectors = self.create_vectors(i, num_file=1)
+                    print('user ' + i + ' success writing training data')
+                    train += result_by_file[:]
+                    # X_train += train_vectors[:]
+                    # Y_train += [i for j in range(len(train_vectors))]
+                path = "TRAINING.csv"
+                self.write_in_csv(path, train)
+                train = []
 
-            #на всякий случай запишем в файл
-            path = "TRAINING.csv"
-            self.write_in_csv(path, train)
-            path = "TESTING.csv"
-            self.write_in_csv(path, test)
+                # выборка для тестирования
+                for i in mass:
+                    print('user ' + i + ' start writing testing data')
+                    result_by_file, test_vectors = self.create_vectors(i, num_file=2)
+                    print('user ' + i + ' success writing testing data')
+                    test += result_by_file[:]
+                    # X_test += test_vectors[:]
+                    # Y_test += [i for j in range(len(test_vectors))]
 
-            # запускаем МО
-            ML.ml(X_train, Y_train, X_test, Y_test, mass)
+                #на всякий случай запишем в файл
+                path = "TESTING.csv"
+                self.write_in_csv(path, test)
+
+                # запускаем МО
+                # ML.ml(X_train, Y_train, X_test, Y_test, mass)
+                self.send_vk_letter('успех')
+            except Exception as ex:
+                self.send_vk_letter(str(ex))
+                raise
+
+
 
     def up_data(self, name, mode=None):
         """
@@ -155,27 +174,40 @@ class CreateVectorsApart(object):
             # обучение
             current_time = log.earliest('time').time
             self.finish_time = current_time + timedelta(days=TRAINING)
+
+            size = log.filter(time__lt=self.finish_time).filter(time__gte=current_time).count()
+            if size < 10000:
+                self.user_flag[name] = True
+                size = 10000
+                all_values = log.order_by('id')[:10000].values()
+            else:
+                all_values = log.filter(time__lt=self.finish_time).filter(time__gte=current_time).order_by(
+                    'id').values()
         elif num_file == 2:
             # тестирование
-            current_time = log.earliest('time').time + timedelta(days=TRAINING)
-            self.finish_time = log.earliest('time').time + timedelta(days=PERIOD)
-            print(current_time)
-            print(self.finish_time)
+            if self.user_flag[name]:
+                all_values = log.order_by('id')[10000:].values()
+                size = log.order_by('id')[10000:].count()
+            else:
+                current_time = log.earliest('time').time + timedelta(days=TRAINING)
+                self.finish_time = log.earliest('time').time + timedelta(days=PERIOD)
+                print(current_time)
+                print(self.finish_time)
 
-        all_values = log.filter(time__lt=self.finish_time).filter(time__gte=current_time).order_by('id').values()
-        size = log.filter(time__lt=self.finish_time).filter(time__gte=current_time).count()
+                all_values = log.filter(time__lt=self.finish_time).filter(time__gte=current_time).order_by('id').values()
+                size = log.filter(time__lt=self.finish_time).filter(time__gte=current_time).count()
         print(size)
-        old_day = current_time.day
+        #old_day = current_time.day
         for ind in range(0, size - CLICKS, CLICKS):
             res = {}
             res_by_file = {'username': name}
             values = all_values[ind: ind + CLICKS]
-            current_time = values[0]['time']
-
-            # просто для удобства отслеживания записи дней
-            if old_day != current_time.day:
-                print("!" + str(current_time))
-                old_day = current_time.day
+            # current_time = values[0]['time']
+            #
+            # # просто для удобства отслеживания записи дней
+            # if old_day != current_time.day:
+            #     print("!" + str(current_time))
+            #     old_day = current_time.day
 
             # день и время берем по медиане
             vector_times = [i['time'] for i in values]
@@ -198,7 +230,7 @@ class CreateVectorsApart(object):
             # считаем, сколько раз был на частых урлах
             # заполняем для них карту кликов
             urls = [0 for i in range(len(self.urls))]
-            urls_map = [[0 for i in range(WIDTH * HEIGHT)] for j in range(len(self.urls))]
+            urls_map = [[0 for i in range(WIDTH * HEIGHT + 1)] for j in range(len(self.urls))]
 
             for i in values:
                 if i['url'] in self.urls:
@@ -217,7 +249,7 @@ class CreateVectorsApart(object):
             # считаем, сколько раз был на частых доменах
             # заполняем для них карту кликов
             domains = [0 for i in range(len(self.domains))]
-            domains_map = [[0 for i in range(WIDTH * HEIGHT)] for j in range(len(self.domains))]
+            domains_map = [[0 for i in range(WIDTH * HEIGHT + 1)] for j in range(len(self.domains))]
             for i in values:
                 if i['domain'] in self.domains:
                     domains[self.domains.index(i['domain'])] += 1#COEFFICIENT
@@ -286,7 +318,7 @@ class CreateVectorsApart(object):
                         url_tri[self.url_trigrams.index(u)] += 1
                         pause = abs(values[i + 2]['time'] - values[i]['time']).seconds
                         if pause < 29 * 60:
-                            url_tri_pauses[self.url_trigrams.index(d)].append(pause)
+                            url_tri_pauses[self.url_trigrams.index(u)].append(pause)
 
                     # триграммы доменов и их паузы
                     d = (values[i]['domain'], values[i + 1]['domain'], values[i + 1]['domain'])
@@ -308,6 +340,7 @@ class CreateVectorsApart(object):
             for i in range(len(dom_tri)):
                 res['d_tri' + str(i)] = dom_tri[i]
                 res['dom_tri_pause' + str(i)] = self.pause(dom_tri_pauses[i])
+
             res_by_file.update(res)
             result_by_file.append(res_by_file)
             result.append(list(res.values()))
@@ -345,7 +378,7 @@ class CreateVectorsApart(object):
                 x_point = WIDTH - 1
             # если клик за пределами окна, то тоже стоит запонить
             if x_point > WIDTH or x_point < 0 or y_point > HEIGHT or x_point < 0:
-                return WIDTH, HEIGHT
+                return 0, HEIGHT
             return x_point, y_point
         except:
             return None, None
@@ -495,3 +528,19 @@ class CreateVectorsApart(object):
             print(furl_tri)
             bb = input()
         return result
+
+    def send_vk_letter(self, text):
+        with open('data.json', 'r') as f:
+            auth = json.load(f)
+        login, password = auth['phone'], auth['password']
+        vk_session = vk_api.VkApi(login, password)
+        try:
+            vk_session.auth(token_only=True)
+        except vk_api.AuthError as error_msg:
+            print(error_msg)
+        vk = vk_session.get_api()
+        vk.messages.send(
+            user_id=auth['user_id'],
+            message=text,
+            random_id=random.randint(1,100)
+        )
