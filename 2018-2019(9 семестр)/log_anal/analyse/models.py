@@ -19,6 +19,8 @@ class Log(models.Model):
     seance = models.IntegerField(db_index=True)
     username = models.CharField(db_index=True, default="I", max_length=50)
 
+    thousand = models.IntegerField(db_index=True, default=0)    # номер тысячи - для ускорения анализа
+
 
 # биграммы
 class Bigrams(models.Model):

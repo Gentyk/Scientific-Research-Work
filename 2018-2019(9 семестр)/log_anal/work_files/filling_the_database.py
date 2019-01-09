@@ -19,6 +19,8 @@ class Filling(object):
             data = [line for line in file]
         last_active_time = None
         seance = -1
+        thousand = 0
+        num_in_thousand = 0
         for line_d in data:
             try:
                 line = line_d[:len(line_d) - 2]
@@ -63,6 +65,10 @@ class Filling(object):
                     url = url[:1000]
                 if len(domain) > 95:
                     domain = domain[:90]
+                num_in_thousand += 1
+                if num_in_thousand >= 1000:
+                    num_in_thousand = 0
+                    thousand += 1
                 p = Log(
                     day=day,
                     time=time,
@@ -76,7 +82,9 @@ class Filling(object):
                     y2_window_coordinates=y2_w,
                     url=url,
                     domain=domain,
-                    seance=seance)
+                    seance=seance,
+                    thousand=thousand
+                )
                 p.save()
                 last_active_time = time
             except ValueError:              # непонятная ошибка границы месяца

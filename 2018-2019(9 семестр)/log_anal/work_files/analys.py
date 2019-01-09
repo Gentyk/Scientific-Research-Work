@@ -22,7 +22,7 @@ HEIGHT = 18*5
 
 
 class Main:
-    def __init__(self):
+    def __init__(self, num):
         """
         Просмотр всех пользователей в логах и запуск анализа для каждого из них. В результате будут созданы файлы с
         данными о каждом.
@@ -31,23 +31,21 @@ class Main:
         print(names)
         names = [name[0] for name in names]
         for name in names:
-            print("0")
             log = Log.objects.filter(username=name)
-            print(name)
-            finish_time = log.earliest('time').time + timedelta(days=PERIOD)
+            u_log = log.filter(thousand__lte=num)
+            finish_time = u_log.latest('time').time
 
-            u_log = log.filter(time__lt=finish_time)
+            print(name)
+            print(u_log.earliest('time').time)
+            print(finish_time)
+
             bi_log = Bigrams.objects.filter(username=name).filter(time1__lt=finish_time).filter(time2__lt=finish_time)
             tri_log = Trigrams.objects.filter(username=name).filter(time2__lt=finish_time).filter(time3__lt=finish_time)
 
-            print("1")
             a = Analyst(u_log, bi_log, tri_log, name, finish_time)
-            print("2")
             a.activity_analyse()
-            print("3")
-            path = './users/' + name + '_otch.npy'
+            path = './users/' + name + str(num) + '_otch.npy'
             np.save(path, a.result)
-            print("4")
             # path = './users/' + name + '_otch.txt'
             # with open(path, 'w') as f:
             #     for k in a.result:
@@ -369,7 +367,7 @@ class Analyst(object):
                 v = 0
                 if mass_t:
                     v = sum(mass_t) / len(mass_t)
-                result_bi_gramms[tuple(urls[0], urls[1])] = v#(max(t), v, t)
+                result_bi_gramms[tuple([urls[0], urls[1]])] = v#(max(t), v, t)
                 if len(result_bi_gramms) >= 15:
                     break
             if len(result_bi_gramms) >= 15:
@@ -398,7 +396,7 @@ class Analyst(object):
                 v = 0
                 if mass_t:
                     v = sum(mass_t)/len(mass_t)
-                result_bid_gramms[tuple(domains[0], domains[1])] = v  # (max(t), v, t)
+                result_bid_gramms[tuple([domains[0], domains[1]])] = v  # (max(t), v, t)
                 if len(result_bid_gramms) >= 15:
                     break
             if len(result_bid_gramms) >= 15:
@@ -433,7 +431,7 @@ class Analyst(object):
                     v = sum(mass_t) / len(mass_t)
                 if mass_t2:
                     v2 = sum(mass_t2) / len(mass_t2)
-                result_gramms[tuple(data[0], data[1], data[2])] = (v, v2)# = (max(t), v, t, max(t2), v2, t2)
+                result_gramms[tuple([data[0], data[1], data[2]])] = (v, v2)# = (max(t), v, t, max(t2), v2, t2)
                 if len(result_gramms) >= 10:
                     break
             if len(result_gramms) >= 10:
@@ -466,7 +464,7 @@ class Analyst(object):
                     v = sum(mass_t) / len(mass_t)
                 if mass_t2:
                     v2 = sum(mass_t2) / len(mass_t2)
-                resultb_gramms[tuple(data[0], data[1], data[2])] = (v, v2)  # = (max(t), v, t, max(t2), v2, t2)
+                resultb_gramms[tuple([data[0], data[1], data[2]])] = (v, v2)  # = (max(t), v, t, max(t2), v2, t2)
                 if len(resultb_gramms) >= 10:
                     break
             if len(resultb_gramms) >= 10:
