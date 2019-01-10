@@ -1,32 +1,25 @@
 import csv
 from datetime import timedelta
 import json
+import os
 import numpy as np
 import random
 import requests
 import xlsxwriter
 import vk_api
 
-
 from analyse.models import Log
 from ML import ML
-from work_files import analys
 
-#PERIOD = 115000
-CLICKS = 10
-COEFFICIENT = 1 / CLICKS
-#TRAINING = 81000
 WIDTH = 7
 HEIGHT = 5
-TIMES_OF_DAY = 8
-
 
 class CreateVectorsApart(object):
     """
     Создаем вектора для классификации. Каждый вектор содечжит n=CLICKS кликов. Вектор содержит следующие столбцы:
     - имя (str)
-    - день недели (int [0,6])
-    - время клика (день разделен на 8 частей) (int [0,7])
+    - день недели
+    - время клика (день разделен на n частей)
     - средняя пауза в секундах ()
     - частые url всех пользователей (int [0, CLICKS])
     - частые домены всех пользователей (int [0, CLICKS])
@@ -36,7 +29,7 @@ class CreateVectorsApart(object):
     - частые триграммы всех пользователей (int [0, CLICKS-2])
     - для каждой частой триграммы считаем паузу. Если несколько, то среднюю среди пауз.
     """
-    def __init__(self, num):
+    def __init__(self, data, names, clicks, day_parts):
         self.finish_time = None
         self.urls = []
         self.domains = []
@@ -52,72 +45,76 @@ class CreateVectorsApart(object):
         self.dom_bigrams_user = {}
         self.url_trigrams_user = {}
         self.dom_trigrams_user = {}
-
-        self.period = num
-
         self.user_flag = {}
 
+        self.period = data[1]   # количество данных за период обучения и тестирования
+        self.training = data[0] # количество данных за период обучения
+        self.names = names
+        self.n_click = 0
+        self.time_of_day = 0
+        self.path = ""
+        self.main(clicks, day_parts)
+
+    def main(self, clicks, day_parts):
+        """
+        Создает папочку для каждого случая и сбрасывает туда готовые датасеты и отчет
+        """
+        for time_of_day in clicks:
+            for n_click in day_parts:
+                # создаем папку для результатов
+                self.path = str(".\\dataset\\") + str(time_of_day) + " " + str(n_click)
+
+                if not os.path.exists(self.path):
+                    os.makedirs(self.path)
+
+                self.n_click = n_click
+                self.time_of_day = time_of_day
+                self.run()
+
+                # запускаем МО
+                ML.ml(self.path, self.names)
+                print('good end')
+                print("\n time" + str(time_of_day) + " clicks:" + str(n_click))
+                print("\n" + str(self.names))
+
     def run(self, mode = 'normal'):
-        mass = [name[0] for name in Log.objects.only('username').distinct('username').values_list('username')
-                if Log.objects.filter(username=name[0]).count() >= int(self.period // 0.7)]
-        print(mass)
         # иногда надо проверить обучающую выборку
         if mode == 'analysis':
-            for name in mass:
+            for name in self.names:
                 self.up_data(name, mode)
 
-            for i in mass:
+            for i in self.names:
                 print('user ' + i + ' start writing training data')
-                train_vectors = self.create_vectors_analyse(i)
+                self.create_vectors_analyse(i)
                 print('user ' + i + ' success writing training data')
 
         # обычный режим
         else:
-            X_train = []
-            Y_train = []
-            X_test = []
-            Y_test = []
             train = []
             test = []
-
-            for name in mass:
+            for name in self.names:
                 self.user_flag[name] = False
                 self.up_data(name)
 
-            try:
-                # обучающая выбока
-                for i in mass:
-                    print('user ' + i + ' start writing training data')
-                    result_by_file, train_vectors = self.create_vectors(i, num_file=1)
-                    print('user ' + i + ' success writing training data')
-                    train += result_by_file[:]
-                    # X_train += train_vectors[:]
-                    # Y_train += [i for j in range(len(train_vectors))]
-                path = str(self.period) + "TRAINING.csv"
-                self.write_in_csv(path, train)
-                train = []
+            # обучающая выбока
+            for i in self.names:
+                print('user ' + i + ' start writing training data')
+                result_by_file, train_vectors = self.create_vectors(i, num_file=1)
+                print('user ' + i + ' success writing training data')
+                train += result_by_file[:]
+            path = self.path + "\\TRAINING.csv"
+            self.write_in_csv(path, train)
 
-                # выборка для тестирования
-                for i in mass:
-                    print('user ' + i + ' start writing testing data')
-                    result_by_file, test_vectors = self.create_vectors(i, num_file=2)
-                    print('user ' + i + ' success writing testing data')
-                    test += result_by_file[:]
-                    # X_test += test_vectors[:]
-                    # Y_test += [i for j in range(len(test_vectors))]
+            # выборка для тестирования
+            for i in self.names:
+                print('user ' + i + ' start writing testing data')
+                result_by_file, test_vectors = self.create_vectors(i, num_file=2)
+                print('user ' + i + ' success writing testing data')
+                test += result_by_file[:]
 
-                #на всякий случай запишем в файл
-                path = str(self.period) + "TESTING.csv"
-                self.write_in_csv(path, test)
-
-                # запускаем МО
-                # ML.ml(X_train, Y_train, X_test, Y_test, mass)
-                #self.send_vk_letter('успех')
-            except Exception as ex:
-                #self.send_vk_letter(str(ex))
-                raise
-
-
+            #на всякий случай запишем в файл
+            path = self.path + "\\TESTING.csv"
+            self.write_in_csv(path, test)
 
     def up_data(self, name, mode=None):
         """
@@ -140,61 +137,33 @@ class CreateVectorsApart(object):
             self.url_trigrams_user[name] = [k for k in r_dict['url триграммы']]
             self.dom_trigrams_user[name] = [k for k in r_dict['domain триграммы']]
 
-    def get_maps(self, name):
-        """
-        Получаем карты кликов доменов и урлов в виде словарей. Например:
-            {
-                url1 : <карты кликов, соответсвующая url1>:;
-                ...
-            }
-
-        """
-        # урлы
-        url_matrix = {}
-        type_obj = 'url'
-        objects = [i[0] for i in
-                   Log.objects.filter(username=name).only(type_obj).distinct(type_obj).values_list(type_obj)]
-        names = [url for url in objects if url in self.urls]
-        for url in names:
-            outfile = ".\\users\\" + name + "\\" + type_obj + " " + name + str(self.urls.index(url) + 1) + ".npy"
-            url_matrix[url] = np.load(outfile)
-
-        # домены
-        domain_matrix = {}
-        type_obj = 'domain'
-        objects = [i[0] for i in
-                   Log.objects.filter(username=name).only(type_obj).distinct(type_obj).values_list(type_obj)]
-        names = [domain for domain in objects if domain in self.domains]
-        for domain in names:
-            outfile = ".\\users\\" + name + "\\" + type_obj + " " + name + str(self.domains.index(domain) + 1) + ".npy"
-            domain_matrix[domain] = np.load(outfile)
-        return url_matrix, domain_matrix
 
     def create_vectors(self, name, num_file=None):
+        size = 0
         result = []
         result_by_file = []
         log = Log.objects.filter(username=name)
         if num_file == 1:
             # обучение
-            all_v = log.filter(thousand__lte=self.period//1000)
+            all_v = log.filter(thousand__lt=self.training)
             size = all_v.count()
             all_values = all_v.order_by('id').values()
         elif num_file == 2:
             # тестирование
-            all_v = log.filter(thousand__gt=self.period//1000).filter(thousand__lt=(int(self.period//0.7))//1000)
+            all_v = log.filter(thousand__gte=self.training).filter(thousand__lt=self.period)
             size = all_v.count()
             all_values = all_v.order_by('id').values()
         print(size)
         #old_day = current_time.day
-        for ind in range(0, size - CLICKS, CLICKS):
+        for ind in range(0, size - self.n_click, self.n_click):
             res = {}
             res_by_file = {'username': name}
-            values = all_values[ind: ind + CLICKS]
+            values = all_values[ind: ind + self.n_click]
 
             # день и время берем по медиане
             vector_times = [i['time'] for i in values]
             days = [0 for i in range(7)]
-            t = [0 for i in range(TIMES_OF_DAY)]
+            t = [0 for i in range(self.time_of_day)]
             for i in vector_times:
                 days[i.weekday()] = 1
                 t[i.hour // 8] = 1
@@ -258,8 +227,8 @@ class CreateVectorsApart(object):
             starts = [i['start_computer'] for i in values]
             if any(starts):
                 times = [(i['time'], i['url']) for i in values]
-                for i in range(CLICKS):
-                    if starts[i] and i + 1 < CLICKS and times[i + 1][1]:
+                for i in range(self.n_click):
+                    if starts[i] and i + 1 < self.n_click and times[i + 1][1]:
                         start += 1
                         start_pause = (times[i + 1][0] - times[i][0]).seconds
             res['start'] = start
@@ -376,6 +345,10 @@ class CreateVectorsApart(object):
                 writer.writerow(vector)
 
     def analysis(self):
+        """
+        Записывыет в таблицу эксель всех пользователь и сумму по всем полям.
+        Получается очень наглядно и здорово)
+        """
         mass = [name[0] for name in Log.objects.only('username').distinct('username').values_list('username')]
         r_dict = dict()
         for i in mass:
@@ -448,49 +421,29 @@ class CreateVectorsApart(object):
         fdom_tri = [0 for i in range(len(self.dom_trigrams_user[name]))]
 
 
-        for ind in range(0, size - CLICKS, CLICKS):
-            res = {}
-            values = all_values[ind: ind + CLICKS]
-
-            # проверяем наличие биграмм и триграмм
-            url_bi = [0 for i in range(len(self.url_bigrams_user[name]))]
-            dom_bi = [0 for i in range(len(self.dom_bigrams_user[name]))]
-            url_tri = [0 for i in range(len(self.url_trigrams_user[name]))]
-            dom_tri = [0 for i in range(len(self.dom_trigrams_user[name]))]
+        for ind in range(0, size - self.n_click, self.n_click):
+            values = all_values[ind: ind + self.n_click]
 
             url_and_dom = [(i['url'], i['domain']) for i in values]
             n = len(url_and_dom) - 1
             for i in range(n):
                 u = (url_and_dom[i][0], url_and_dom[i + 1][0])
-                # if u in self.url_bigrams:
-                #     url_bi[self.url_bigrams.index(u)] += 1
                 if u in self.url_bigrams_user[name]:
                     furl_bi[self.url_bigrams_user[name].index(u)] = True
 
                 d = (url_and_dom[i][1], url_and_dom[i + 1][1])
-                # if d in self.dom_bigrams:
-                #     dom_bi[self.dom_bigrams.index(d)] += 1
                 if d in self.dom_bigrams_user[name]:
                     fdom_bi[self.dom_bigrams_user[name].index(d)] = True
 
                 if i + 2 <= n:
                     u = (url_and_dom[i][0], url_and_dom[i + 1][0], url_and_dom[i + 2][0])
-                    # if u in self.url_trigrams:
-                        # url_tri[self.url_trigrams.index(u)] += 1
                     if u in self.url_trigrams_user[name]:
                         furl_tri[self.url_trigrams_user[name].index(u)] = True
 
                     d = (url_and_dom[i][1], url_and_dom[i + 1][1], url_and_dom[i + 2][1])
-                    # if d in self.dom_trigrams:
-                    #     dom_tri[self.dom_trigrams.index(d)] += 1
                     if d in self.dom_trigrams_user[name]:
                         fdom_tri[self.dom_trigrams_user[name].index(d)] = True
 
-            # for i in range(len(dom_bi)):
-            #     res['d_bi' + str(i)] = dom_bi[i]
-            # for i in range(len(dom_tri)):
-            #     res['d_tri' + str(i)] = dom_tri[i]
-            result.append(list(res.values()))
         if not all(fdom_tri):
             print(name)
             print(fdom_tri)
@@ -509,7 +462,7 @@ class CreateVectorsApart(object):
 
             print(furl_tri)
             bb = input()
-        return result
+
 
     def send_vk_letter(self, text):
         session = requests.Session()

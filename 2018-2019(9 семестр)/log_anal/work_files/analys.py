@@ -22,17 +22,14 @@ HEIGHT = 18*5
 
 
 class Main:
-    def __init__(self, num):
+    def __init__(self, num, names):
         """
         Просмотр всех пользователей в логах и запуск анализа для каждого из них. В результате будут созданы файлы с
         данными о каждом.
         """
-        names = Log.objects.values_list('username').distinct()
-        print(names)
-        names = [name[0] for name in names]
         for name in names:
             log = Log.objects.filter(username=name)
-            u_log = log.filter(thousand__lte=num)
+            u_log = log.filter(thousand__lt=num)
             finish_time = u_log.latest('time').time
 
             print(name)
