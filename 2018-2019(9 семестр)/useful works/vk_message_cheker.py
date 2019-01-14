@@ -24,7 +24,7 @@ users_id = []
 offset = 0
 for num in mass:
     time.sleep(0.4)
-    a = vkapi('messages.getConversations', offset=offset, count=num, v=APIVersion)
+    a = vkapi('messages.getConversations', offset=offset, count=150, v=APIVersion)
     for nigger in a['items']:
         if nigger['conversation']['peer']['type'] == 'user' and not nigger['conversation']['peer']['id'] in execute:
             users_id.append(nigger['conversation']['peer']['id'])
