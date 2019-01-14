@@ -14,21 +14,19 @@ APIVersion =  5,92
 a = vkapi('messages.getConversations', v=APIVersion)
 n = a['count']
 if n > 150:
-    mass = [150*(i + 1) for i in range(n // 150)]
-    mass.append(n % 150)
+    data = [(150 * i, 150) for i in range(n // 150)]
+    data.append(((n // 150) * 150, n % 150))
 else:
-    mass = [n]
+    data = [(0, n)]
 # и среди этих диалогов выбираем только те, которые непубличные (один-на-один); из этих диалогов выписываем id пользователей
 # и убираем исключания
 users_id = []
-offset = 0
-for num in mass:
+for offset, count in data:
     time.sleep(0.4)
-    a = vkapi('messages.getConversations', offset=offset, count=150, v=APIVersion)
+    a = vkapi('messages.getConversations', offset=offset, count=count, v=APIVersion)
     for nigger in a['items']:
         if nigger['conversation']['peer']['type'] == 'user' and not nigger['conversation']['peer']['id'] in execute:
             users_id.append(nigger['conversation']['peer']['id'])
-    offset = num
 
 # смотрим сколько диалогов с другими пользователями получилось
 users_id = list(set(users_id))
