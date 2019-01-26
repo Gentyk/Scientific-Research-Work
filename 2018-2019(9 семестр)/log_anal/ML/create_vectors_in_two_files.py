@@ -59,10 +59,10 @@ class CreateVectorsApart(object):
         """
         Создает папочку для каждого случая и сбрасывает туда готовые датасеты и отчет
         """
-        for time_of_day in clicks:
-            for n_click in day_parts:
+        for time_of_day in day_parts:
+            for n_click in clicks:
                 # создаем папку для результатов
-                self.path = str(".\\dataset\\") + str(time_of_day) + " " + str(n_click)
+                self.path = str(".\\dataset\\") + str(time_of_day) + "t " + str(n_click) + "cl " + str(self.training)
 
                 if not os.path.exists(self.path):
                     os.makedirs(self.path)
@@ -120,7 +120,7 @@ class CreateVectorsApart(object):
         """
         Достаем данные специфичные для пользоваетля-владельца
         """
-        r_dict = np.load('.\\users\\' + name + str(self.period) + '_otch.npy').item()
+        r_dict = np.load('.\\users\\' + name + str(self.training) + '_otch.npy').item()
 
         # частые объекты всех пользователей без повторений
         self.urls = list(set(self.urls + r_dict['частые url']))

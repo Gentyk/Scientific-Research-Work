@@ -38,6 +38,7 @@ def ml(path, names):
           'SVC': SVC()}
 
     with open(path + "\\otch.txt", 'w') as f:
+        f.write(str(names) + " " + str(n))
         # обучение, тестирование, вывод на экран
         for name_alg, algorithm in ml.items():
             f.write('\n' + name_alg)
