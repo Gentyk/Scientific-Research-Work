@@ -4,13 +4,14 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
+import time
 
 def ml(path, names):
     # находим количество столбцов в csv
     with open(path + '\\TRAINING.csv', 'r') as f:
         reader = csv.reader(f, delimiter=',')
         n = len(next(reader))
-
+    time.sleep(1000)
     # данные для обучения
     df = pd.read_csv(path + '\\TRAINING.csv')
     df.columns = ['Y'] + ['X' + str(i) for i in range(n - 1)]
@@ -60,7 +61,13 @@ def ml(path, names):
                         FAR[name] += 1
                     if result[i] != name and test_Y[i] == name:
                         FRR[name] += 1
-            f.write('\n' +'ошибается вообще:' + str(good / n_test))
+            f.write('\n' +'точность:' + str(good / n_test))
+            summ_FAR = 0
+            summ_FRR = 0
             for name in names:
                 f.write('\n' + name + " FAR:" + str(FAR[name] / n_test))
                 f.write('\n' + name + " FRR:" + str(FRR[name] / n_login_attempt[name]))
+                summ_FAR += FAR[name] / n_test
+                summ_FRR += FRR[name] / n_login_attempt[name]
+            f.write("\nсредний FAR:" + str(summ_FAR / len(names)))
+            f.write("\nсредний FRR:" + str(summ_FRR / len(names)))

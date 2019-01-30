@@ -77,7 +77,10 @@ class CreateVectorsApart(object):
                 self.run()
 
                 # запускаем МО
-                ML.ml(self.path, self.names)
+                try:
+                    ML.ml(self.path, self.names)
+                except:
+                    pass
                 print('good end')
                 print("\n time" + str(time_of_day) + " clicks:" + str(n_click))
                 print("\n" + str(self.names))
@@ -125,7 +128,7 @@ class CreateVectorsApart(object):
         """
         Достаем данные специфичные для пользоваетля-владельца
         """
-        r_dict = np.load('.\\w47_users\\' + name + str(self.training) + '_otch.npy').item()
+        r_dict = np.load('.\\' + self.team_name[len(self.team_name)-1] + '_users\\' + name + str(self.training) + '_otch.npy').item()
 
         # частые объекты всех пользователей без повторений
         self.urls = list(set(self.urls + r_dict['частые url']))
