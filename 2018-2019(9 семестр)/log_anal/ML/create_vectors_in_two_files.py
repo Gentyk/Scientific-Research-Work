@@ -29,8 +29,10 @@ class CreateVectorsApart(object):
     - частые триграммы всех пользователей (int [0, CLICKS-2])
     - для каждой частой триграммы считаем паузу. Если несколько, то среднюю среди пауз.
     """
-    def __init__(self, data, names, clicks, day_parts):
+    def __init__(self, data, names, clicks, day_parts, permission, team_name):
         self.finish_time = None
+        self.permission = permission
+        self.team_name = team_name
         self.urls = []
         self.domains = []
         self.url_maps = {}
@@ -55,6 +57,7 @@ class CreateVectorsApart(object):
         self.path = ""
         self.main(clicks, day_parts)
 
+
     def main(self, clicks, day_parts):
         """
         Создает папочку для каждого случая и сбрасывает туда готовые датасеты и отчет
@@ -62,7 +65,9 @@ class CreateVectorsApart(object):
         for time_of_day in day_parts:
             for n_click in clicks:
                 # создаем папку для результатов
-                self.path = str(".\\dataset\\") + str(time_of_day) + "t " + str(n_click) + "cl " + str(self.training)
+                self.path = str(".\\dataset\\") + self.team_name \
+                            + " perm " + str(self.permission) + " " +\
+                            str(time_of_day) + "t " + str(n_click) + "cl " + str(self.training)
 
                 if not os.path.exists(self.path):
                     os.makedirs(self.path)
@@ -120,7 +125,7 @@ class CreateVectorsApart(object):
         """
         Достаем данные специфичные для пользоваетля-владельца
         """
-        r_dict = np.load('.\\users\\' + name + str(self.training) + '_otch.npy').item()
+        r_dict = np.load('.\\w47_users\\' + name + str(self.training) + '_otch.npy').item()
 
         # частые объекты всех пользователей без повторений
         self.urls = list(set(self.urls + r_dict['частые url']))
@@ -142,7 +147,7 @@ class CreateVectorsApart(object):
         size = 0
         result = []
         result_by_file = []
-        log = Log.objects.filter(username=name)
+        log = Log.objects.filter(username=name).filter(start_computer=False)
         if num_file == 1:
             # обучение
             all_v = log.filter(thousand__lt=self.training)
@@ -185,35 +190,40 @@ class CreateVectorsApart(object):
 
             for i in values:
                 if i['url'] in self.urls:
-                    urls[self.urls.index(i['url'])] += 1#COEFFICIENT
+                    urls[self.urls.index(i['url'])] += 1
                     x, y = self.point(i)
                     if x and y:
                             urls_map[self.urls.index(i['url'])][y * WIDTH + x] += 1
             for i in range(len(urls)):
                 res['u' + str(i)] = urls[i]
-            i = 0
-            for map in urls_map:
-                for j in map:
-                    res['u_map' + str(i)] = j
-                    i += 1
+
+            if 'url_maps' in self.permission:
+                i = 0
+                for map in urls_map:
+                    for j in map:
+                        res['u_map' + str(i)] = j
+                        i += 1
 
             # считаем, сколько раз был на частых доменах
             # заполняем для них карту кликов
-            domains = [0 for i in range(len(self.domains))]
-            domains_map = [[0 for i in range(WIDTH * HEIGHT + 1)] for j in range(len(self.domains))]
-            for i in values:
-                if i['domain'] in self.domains:
-                    domains[self.domains.index(i['domain'])] += 1#COEFFICIENT
-                    x, y = self.point(i)
-                    if x and y:
-                        domains_map[self.domains.index(i['domain'])][y * WIDTH + x] += 1
-            for i in range(len(domains)):
-                res['d' + str(i)] = domains[i]
-            i = 0
-            for map in domains_map:
-                for j in map:
-                    res['d_map' + str(i)] = j
-                    i += 1
+            if 'domain' in self.permission or 'domain_maps' in self.permission:
+                domains = [0 for i in range(len(self.domains))]
+                domains_map = [[0 for i in range(WIDTH * HEIGHT + 1)] for j in range(len(self.domains))]
+                for i in values:
+                    if i['domain'] in self.domains:
+                        domains[self.domains.index(i['domain'])] += 1#COEFFICIENT
+                        x, y = self.point(i)
+                        if x and y:
+                            domains_map[self.domains.index(i['domain'])][y * WIDTH + x] += 1
+            if 'domain' in self.permission:
+                for i in range(len(domains)):
+                    res['d' + str(i)] = domains[i]
+            if 'domain_maps' in self.permission:
+                i = 0
+                for map in domains_map:
+                    for j in map:
+                        res['d_map' + str(i)] = j
+                        i += 1
 
             # паузы (средняя) - которая менее 5 мин
             times = [i['time'] for i in values]
@@ -221,18 +231,18 @@ class CreateVectorsApart(object):
                       if abs(times[i+1]-times[i]) < timedelta(seconds=300)]
             res['middle_pause'] = sum(pauses) / len(pauses)
 
-            # если был факт старта компа
-            start = 0
-            start_pause = 0
-            starts = [i['start_computer'] for i in values]
-            if any(starts):
-                times = [(i['time'], i['url']) for i in values]
-                for i in range(self.n_click):
-                    if starts[i] and i + 1 < self.n_click and times[i + 1][1]:
-                        start += 1
-                        start_pause = (times[i + 1][0] - times[i][0]).seconds
-            res['start'] = start
-            res['start_pause'] = start_pause
+            # # если был факт старта компа
+            # start = 0
+            # start_pause = 0
+            # starts = [i['start_computer'] for i in values]
+            # if any(starts):
+            #     times = [(i['time'], i['url']) for i in values]
+            #     for i in range(self.n_click):
+            #         if starts[i] and i + 1 < self.n_click and times[i + 1][1]:
+            #             start += 1
+            #             start_pause = (times[i + 1][0] - times[i][0]).seconds
+            # res['start'] = start
+            # res['start_pause'] = start_pause
 
             # проверяем наличие биграмм и триграмм
             url_bi = [0 for i in range(len(self.url_bigrams))]
@@ -247,50 +257,63 @@ class CreateVectorsApart(object):
             n = len(values) - 1
             for i in range(n):
                 # биграммы url и их паузы
-                u = (values[i]['url'], values[i + 1]['url'])
-                if u in self.url_bigrams:
-                    url_bi[self.url_bigrams.index(u)] += 1
-                    pause = abs(values[i + 1]['time'] - values[i]['time']).seconds
-                    if pause < 29 * 60:
-                        url_bi_pauses[self.url_bigrams.index(u)].append(pause)
+                if 'url_bi' in self.permission or 'grams_pause' in self.permission:
+                    u = (values[i]['url'], values[i + 1]['url'])
+                    if u in self.url_bigrams:
+                        url_bi[self.url_bigrams.index(u)] += 1
+                        pause = abs(values[i + 1]['time'] - values[i]['time']).seconds
+                        if pause < 29 * 60:
+                            url_bi_pauses[self.url_bigrams.index(u)].append(pause)
 
-                # биграммы доманов и их паузы
-                d = (values[i]['domain'], values[i + 1]['domain'])
-                if d in self.dom_bigrams:
-                    dom_bi[self.dom_bigrams.index(d)] += 1
-                    pause = abs(values[i + 1]['time'] - values[i]['time']).seconds
-                    if pause < 29 * 60:
-                        dom_bi_pauses[self.dom_bigrams.index(d)].append(pause)
+                # биграммы домeнов и их паузы
+                if 'dom_bi' in self.permission or 'grams_pause' in self.permission:
+                    d = (values[i]['domain'], values[i + 1]['domain'])
+                    if d in self.dom_bigrams:
+                        dom_bi[self.dom_bigrams.index(d)] += 1
+                        pause = abs(values[i + 1]['time'] - values[i]['time']).seconds
+                        if pause < 29 * 60:
+                            dom_bi_pauses[self.dom_bigrams.index(d)].append(pause)
 
                 if i + 2 <= n:
                     # триграммы url и их паузы
-                    u = (values[i]['url'], values[i + 1]['url'], values[i + 2]['url'])
-                    if u in self.url_trigrams:
-                        url_tri[self.url_trigrams.index(u)] += 1
-                        pause = abs(values[i + 2]['time'] - values[i]['time']).seconds
-                        if pause < 29 * 60:
-                            url_tri_pauses[self.url_trigrams.index(u)].append(pause)
+                    if 'url_tri' in self.permission or 'grams_pause' in self.permission:
+                        u = (values[i]['url'], values[i + 1]['url'], values[i + 2]['url'])
+                        if u in self.url_trigrams:
+                            url_tri[self.url_trigrams.index(u)] += 1
+                            pause = abs(values[i + 2]['time'] - values[i]['time']).seconds
+                            if pause < 29 * 60:
+                                url_tri_pauses[self.url_trigrams.index(u)].append(pause)
 
                     # триграммы доменов и их паузы
-                    d = (values[i]['domain'], values[i + 1]['domain'], values[i + 1]['domain'])
-                    if d in self.dom_trigrams:
-                        dom_tri[self.dom_trigrams.index(d)] += 1
-                        pause = abs(values[i + 2]['time'] - values[i]['time']).seconds
-                        if pause < 29 * 60:
-                            dom_tri_pauses[self.dom_trigrams.index(d)].append(pause)
+                    if 'dom_tri' in self.permission or 'grams_pause' in self.permission:
+                        d = (values[i]['domain'], values[i + 1]['domain'], values[i + 1]['domain'])
+                        if d in self.dom_trigrams:
+                            dom_tri[self.dom_trigrams.index(d)] += 1
+                            pause = abs(values[i + 2]['time'] - values[i]['time']).seconds
+                            if pause < 29 * 60:
+                                dom_tri_pauses[self.dom_trigrams.index(d)].append(pause)
 
-            for i in range(len(url_bi)):
-                res['url_bi' + str(i)] = url_bi[i]
-                res['url_bi_pause' + str(i)] = self.pause(url_bi_pauses[i])
-            for i in range(len(url_tri)):
-                res['url_tri' + str(i)] = url_tri[i]
-                res['url_tri_pause' + str(i)] = self.pause(url_tri_pauses[i])
-            for i in range(len(dom_bi)):
-                res['d_bi' + str(i)] = dom_bi[i]
-                res['dom_bi_pause' + str(i)] = self.pause(dom_bi_pauses[i])
-            for i in range(len(dom_tri)):
-                res['d_tri' + str(i)] = dom_tri[i]
-                res['dom_tri_pause' + str(i)] = self.pause(dom_tri_pauses[i])
+            if 'url_bi' in self.permission:
+                for i in range(len(url_bi)):
+                    res['url_bi' + str(i)] = url_bi[i]
+            if 'url_tri' in self.permission:
+                for i in range(len(url_tri)):
+                    res['url_tri' + str(i)] = url_tri[i]
+            if 'dom_bi' in self.permission:
+                for i in range(len(dom_bi)):
+                    res['d_bi' + str(i)] = dom_bi[i]
+            if 'dom_tri' in self.permission:
+                for i in range(len(dom_tri)):
+                    res['d_tri' + str(i)] = dom_tri[i]
+            if 'grams_pause' in self.permission:
+                for i in range(len(url_bi)):
+                    res['url_bi_pause' + str(i)] = self.pause(url_bi_pauses[i])
+                for i in range(len(url_tri)):
+                    res['url_tri_pause' + str(i)] = self.pause(url_tri_pauses[i])
+                for i in range(len(dom_bi)):
+                    res['dom_bi_pause' + str(i)] = self.pause(dom_bi_pauses[i])
+                for i in range(len(dom_tri)):
+                    res['dom_tri_pause' + str(i)] = self.pause(dom_tri_pauses[i])
 
             res_by_file.update(res)
             result_by_file.append(res_by_file)

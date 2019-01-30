@@ -8,6 +8,7 @@ import matplotlib
 import numpy as np
 import os
 from pytz import timezone
+import xlsxwriter
 
 from analyse.models import Bigrams, Log, Trigrams
 
@@ -22,32 +23,49 @@ HEIGHT = 18*5
 
 
 class Main:
-    def __init__(self, num, names):
+    def __init__(self, num, names, mode=None):
         """
         Просмотр всех пользователей в логах и запуск анализа для каждого из них. В результате будут созданы файлы с
         данными о каждом.
         """
         for name in names:
             log = Log.objects.filter(username=name)
-            u_log = log.filter(thousand__lt=num)
+            u_log = (log.filter(thousand__lt=num) if mode != "min" else log)
             finish_time = u_log.latest('time').time
 
             print(name)
             print(u_log.earliest('time').time)
             print(finish_time)
 
-            bi_log = Bigrams.objects.filter(username=name).filter(time1__lt=finish_time).filter(time2__lt=finish_time)
-            tri_log = Trigrams.objects.filter(username=name).filter(time2__lt=finish_time).filter(time3__lt=finish_time)
+            if mode == "min":
+                a = MinAnalyst(u_log, name, finish_time)
+                a.activity_analyse()
+                path = './users/' + name + '_otch.txt'
+                with open(path, 'w') as f:
+                    for k in a.result:
+                        s = k + ": " + str(a.result[k]) + "\n"
+                        f.writelines(s)
+            elif mode:
+                bi_log = Bigrams.objects.filter(username=name).filter(time1__lt=finish_time).filter(time2__lt=finish_time)
+                tri_log = Trigrams.objects.filter(username=name).filter(time2__lt=finish_time).filter(time3__lt=finish_time)
 
-            a = Analyst(u_log, bi_log, tri_log, name, finish_time)
-            a.activity_analyse()
-            path = './users/' + name + str(num) + '_otch.npy'
-            np.save(path, a.result)
-            # path = './users/' + name + '_otch.txt'
-            # with open(path, 'w') as f:
-            #     for k in a.result:
-            #         s = k + ": " + str(a.result[k]) + "\n"
-            #         f.writelines(s)
+            if mode == "work":
+                a = WorkAnalyst(u_log, bi_log, tri_log, name, finish_time)
+                a.activity_analyse()
+                path = './w47_users/' + name + str(num) + '_otch.npy'
+                np.save(path, a.result)
+
+            if mode == "full":
+                a = Analyst(u_log, bi_log, tri_log, name, finish_time)
+                a.activity_analyse()
+                path = './users/' + name + str(num) + '_otch.npy'
+                np.save(path, a.result)
+                path = './users/' + name + '_otch.txt'
+                with open(path, 'w') as f:
+                    for k in a.result:
+                        s = k + ": " + str(a.result[k]) + "\n"
+                        f.writelines(s)
+
 
 
 class Analyst(object):
@@ -69,12 +87,12 @@ class Analyst(object):
         if not os.path.exists(path):
             os.makedirs(path)
         # последовательный анализ лога по пуктам
-        #self.start_treatment()
-        #self.distribution_in_time()
+        self.start_treatment()
+        self.distribution_in_time()
         self.frequent_objects()
         self.n_gramms()
-        #self.pause()
-        #self.graphic_res()
+        self.pause()
+        self.graphic_res()
 
     # Пункт 0: самые общие данные о логе
     def start_treatment(self):
@@ -192,8 +210,8 @@ class Analyst(object):
         self.result['распределение пауз между кликами на частых доменах(когда не переключаемся на другой)'] = domain_time
 
         # Пункт 2.3: карта кликов
-        # self._click_map(frequent_urls, 'url')
-        # self._click_map(frequent_domains, 'domain')
+        self._click_map(frequent_urls, 'url')
+        self._click_map(frequent_domains, 'domain')
 
     def _get_frequent_objects_list(self, obj_list, obj_type, numbers):
         # возвращает массив частых объектов в виде:
@@ -303,26 +321,26 @@ class Analyst(object):
             np.save(path+"\\"+type_obj+" "+self.username+str(i), matrix)
 
             # изображаем карту кликов
-            # px = []
-            # py = []
-            # a = []
-            # cm = plt.cm.get_cmap('jet')
-            # for y in range(HEIGHT):
-            #     for x in range(WIDTH):
-            #         px.append(x)
-            #         py.append(HEIGHT-y)
-            #         a.append(int(matrix[y, x]) if int(matrix[y, x]) > 0 else None)
-            #
-            # plt.scatter(px, py, c=a, cmap=cm)
-            # plt.xlabel("x")
-            # plt.ylabel("y")
-            # plt.title(str(obj))
-            # cbar = plt.colorbar()
-            # cbar.set_label("elevation (m)", labelpad=+1)
-            # #plt.show()
-            # i+=1
-            # plt.savefig(path+"\\"+type_obj+" "+self.username+" "+str(i)+".png")
-            # plt.clf()
+            px = []
+            py = []
+            a = []
+            cm = plt.cm.get_cmap('jet')
+            for y in range(HEIGHT):
+                for x in range(WIDTH):
+                    px.append(x)
+                    py.append(HEIGHT-y)
+                    a.append(int(matrix[y, x]) if int(matrix[y, x]) > 0 else None)
+
+            plt.scatter(px, py, c=a, cmap=cm)
+            plt.xlabel("x")
+            plt.ylabel("y")
+            plt.title(str(obj))
+            cbar = plt.colorbar()
+            cbar.set_label("elevation (m)", labelpad=+1)
+            #plt.show()
+            i+=1
+            plt.savefig(path+"\\"+type_obj+" "+self.username+" "+str(i)+".png")
+            plt.clf()
 
     # Пункт 3: частые n-граммы
     def n_gramms(self):
@@ -553,3 +571,69 @@ class Analyst(object):
         ax.invert_yaxis()
         plt.savefig(path + ".png")
         plt.clf()
+
+
+class WorkAnalyst(Analyst):
+    """
+    Класс, который отвечает за получение инфомации в случае, если никакая дополнительная информация не нужна,
+    а только рабочие файлы.
+    """
+    def activity_analyse(self):
+        """
+        Если нам не нужны никакие дополнительные данные и графики
+        """
+        # создаем папку для результатов, если её нету
+        path = str("./w47_users/")+self.username
+        path = os.path.abspath(path)
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        # получение частых объектов и частых n-грамм
+        self.frequent_objects()
+        self.n_gramms()
+
+
+class MinAnalyst(Analyst):
+    """
+    В случае, если нам необходима только самая общая информация
+    """
+    def __init__(self, log, username, finish_time):
+        self.log = log
+        self.username = username
+        self.finish_time = finish_time
+        self.seance = log.values("seance").distinct().count()
+        self.n_clicks = self.log.filter(start_computer=False).count()
+        self.result = {}
+
+    def activity_analyse(self):
+        # создаем папку для результатов, если нету
+        path = str("./users/")+self.username
+        path = os.path.abspath(path)
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        self.start_treatment()
+        self.get_weeks_number_clicks()
+
+    def get_weeks_number_clicks(self):
+        mass = [self.username]
+        time = self.log.earliest('time').time + timedelta(days=7)
+        for i in range(5):
+            mass.append(self.log.filter(time__lte=time).count())
+            time += timedelta(days=7)
+        mass.append(self.log.count())
+
+        workbook = xlsxwriter.Workbook(self.username + '.xlsx')
+        worksheet = workbook.add_worksheet()
+        row = 0
+        j = 0
+        for i in mass:
+            worksheet.write(row, j, i)
+            j += 1
+        row += 1
+        workbook.close()
+
+
+
+
+

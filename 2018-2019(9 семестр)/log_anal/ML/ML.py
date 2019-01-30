@@ -2,6 +2,7 @@ import csv
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 
 def ml(path, names):
@@ -34,7 +35,7 @@ def ml(path, names):
 
     # несколько алгоритмов МО
     ml = {'rf': RandomForestClassifier(),
-          # 'knn': KNeighborsClassifier(n_neighbors=5, weights='uniform', p=1, algorithm='brute'),
+          'lg': LogisticRegression(),
           'SVC': SVC()}
 
     with open(path + "\\otch.txt", 'w') as f:
