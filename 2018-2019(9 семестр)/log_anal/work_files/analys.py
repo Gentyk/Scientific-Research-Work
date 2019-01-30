@@ -23,7 +23,7 @@ HEIGHT = 18*5
 
 
 class Main:
-    def __init__(self, num, names, mode=None):
+    def __init__(self, num, names, mode=None, team=0):
         """
         Просмотр всех пользователей в логах и запуск анализа для каждого из них. В результате будут созданы файлы с
         данными о каждом.
@@ -51,8 +51,8 @@ class Main:
 
             if mode == "work":
                 a = WorkAnalyst(u_log, bi_log, tri_log, name, finish_time)
-                a.activity_analyse()
-                path = './w47_users/' + name + str(num) + '_otch.npy'
+                a.activity_analyse(team)
+                path = './' + team + '_users/' + name + str(num) + '_otch.npy'
                 np.save(path, a.result)
 
             if mode == "full":
@@ -578,12 +578,12 @@ class WorkAnalyst(Analyst):
     Класс, который отвечает за получение инфомации в случае, если никакая дополнительная информация не нужна,
     а только рабочие файлы.
     """
-    def activity_analyse(self):
+    def activity_analyse(self, team):
         """
         Если нам не нужны никакие дополнительные данные и графики
         """
         # создаем папку для результатов, если её нету
-        path = str("./w47_users/")+self.username
+        path = str("./" + team + "_users/")+self.username
         path = os.path.abspath(path)
         if not os.path.exists(path):
             os.makedirs(path)

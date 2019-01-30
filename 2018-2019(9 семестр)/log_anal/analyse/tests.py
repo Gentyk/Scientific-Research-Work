@@ -8,7 +8,7 @@ from ML.create_vectors_in_two_files import CreateVectorsApart
 class Test1(TestCase):
 
     def test1(self):
-        clicks = [5]#, 10, 15, 20]    # количество кликов, которое будет в одном векторе
+        clicks = [15]#, 10, 15, 20]    # количество кликов, которое будет в одном векторе
         teams = {                   # команды и перечень тех, кто в них входит
             1: ('bv', 'im', 'ro'),
             #2: ('bv', 'dy', 'im')
@@ -21,6 +21,7 @@ class Test1(TestCase):
 
         day_parts = [8] # на сколько частей делим день
         permissions = [
+            ['-'],
             ['domain'],
             ['domain', 'domain_maps'],
             ['domain', 'url_maps'],
@@ -35,7 +36,7 @@ class Test1(TestCase):
         for num, names in teams.items():
             print('team ' + str(num))
             for data in teams_set[num]:
-                Main(data[0], names, mode='work')
+                Main(data[0], names, mode='work', team=str(num))
                 for permission in permissions:
                     CreateVectorsApart(data, names, clicks, day_parts, permission, 'team ' + str(num))
 
@@ -53,6 +54,7 @@ class Test1(TestCase):
 
         day_parts = [8] # на сколько частей делим день
         permissions = [
+            ['пусто'],
             ['domain'],
             ['domain', 'domain_maps'],
             ['domain', 'url_maps'],
@@ -67,7 +69,7 @@ class Test1(TestCase):
         for num, names in teams.items():
             print('team ' + str(num))
             for data in teams_set[num]:
-                Main(data[0], names, mode='work')
+                #Main(data[0], names, mode='work', team=str(num))
                 for permission in permissions:
                     CreateVectorsApart(data, names, clicks, day_parts, permission, 'team ' + str(num))
 
