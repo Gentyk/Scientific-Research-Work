@@ -30,9 +30,13 @@ class Bigrams(models.Model):
     time1 = models.DateTimeField()
     url1 = models.TextField(db_index=True, default="")
     domain1 = models.CharField(db_index=True, default="", max_length=100)
+    type1 = models.TextField(db_index=True, default="")
+    category1 = models.TextField(db_index=True, default="")
     time2 = models.DateTimeField()
     url2 = models.TextField(db_index=True, default="")
     domain2 = models.CharField(db_index=True, default="", max_length=100)
+    type2 = models.TextField(db_index=True, default="")
+    category2 = models.TextField(db_index=True, default="")
 
 
 # триграммы
@@ -43,13 +47,50 @@ class Trigrams(models.Model):
     time1 = models.DateTimeField()
     url1 = models.TextField(db_index=True, default="")
     domain1 = models.CharField(db_index=True, default="", max_length=100)
+    type1 = models.TextField(db_index=True, default="")
+    category1 = models.TextField(db_index=True, default="")
     time2 = models.DateTimeField()
     url2 = models.TextField(db_index=True, default="")
     domain2 = models.CharField(db_index=True, default="", max_length=100)
+    type2 = models.TextField(db_index=True, default="")
+    category2 = models.TextField(db_index=True, default="")
     time3 = models.DateTimeField()
     url3 = models.TextField(db_index=True, default="")
     domain3 = models.CharField(db_index=True, default="", max_length=100)
+    type3 = models.TextField(db_index=True, default="")
+    category3 = models.TextField(db_index=True, default="")
 
+# Типы и жанры урлов
+class URLs(models.Model):
+    """
+    Типы:
+    - article,
+    - discussion,
+    - image,
+    - product,
+    - video,
+    - other.
+
+    Жанры - 21 штука(https://www.diffbot.com/dev/docs/product/categories/) + если никакая категория
+
+    Данная таблица только дополняется в случае отсутствия урлов в таблице,а не перезаписывается каждый раз
+    """
+    url = models.TextField(default="")
+    type = models.TextField(db_index=True, default="")
+    category = models.TextField(db_index=True, default="")
+
+
+class Users(models.Model):
+    username = models.CharField(db_index=True, default="I", max_length=50)
+    team = models.IntegerField(db_index=True)
+    frequent_urls = models.TextField(default="")
+    frequent_bi_urls = models.TextField(default="")
+    frequent_tri_urls = models.TextField(default="")
+    frequent_domains = models.TextField(default="")
+    frequent_bi_domains = models.TextField(default="")
+    frequent_tri_domains = models.TextField(default="")
+    frequent_bi_categorys = models.TextField(default="")
+    frequent_bi_types = models.TextField(default="")
 
 
 
