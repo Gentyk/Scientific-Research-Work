@@ -91,7 +91,7 @@ class Analyst(object):
         self.distribution_in_time()
         self.frequent_objects()
         self.n_gramms()
-        self.pause()
+        #self.pause()
         self.graphic_res()
 
     # Пункт 0: самые общие данные о логе
@@ -497,19 +497,19 @@ class Analyst(object):
         for key in self.result[title]:
             self._simple_diagr(title, self.result[title][key], note=str(weekdays[key]))
 
-        titles = [
-            'распределение пауз между запуском компа и браузера',
-            'распределение пауз между запуском компа и браузера(минута)'
-        ]
-        for title in titles:
-            self._simple_line(title, self.result[title])
+        # titles = [
+        #     'распределение пауз между запуском компа и браузера',
+        #     'распределение пауз между запуском компа и браузера(минута)'
+        # ]
+        # for title in titles:
+        #     self._simple_line(title, self.result[title])
 
         titles = [
             'частые url',
             'частые домены'
         ]
-        for title in titles:
-            self._horiz_diagr(title, self.result[title])
+        #for title in titles:
+         #   self._horiz_diagr(title, self.result[title])
 
     def _simple_diagr(self, title, data_dict, ox = None, note = ""):
         title = title + " " + note

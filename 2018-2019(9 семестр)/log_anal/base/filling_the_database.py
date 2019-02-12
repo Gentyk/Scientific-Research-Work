@@ -4,13 +4,15 @@ from django.db.models import Avg, Max, Min, Sum
 from pytz import timezone
 import time as t
 
-from analyse.models import Bigrams, Log, Trigrams
+from analyse.models import Bigrams, Log, Trigrams, URLInfo
+from diffbot.client import DiffbotClient
 
 
 class Filling(object):
     def __init__(self, name):
         self.name = name
         self.filling_bd()
+        self.filling_categories()
         self.filling_bigram_table()
 
     def filling_bd(self):
@@ -93,6 +95,31 @@ class Filling(object):
                 print(e)
                 print(line)
         print("Log--[OK]--- %s seconds ---" % (t.time() - start_time))
+
+    def filling_categories(self):
+        urls = Log.objects.values('url').distinct()
+        diffbot = DiffbotClient()
+        token = '18aa09158e10b70ac108c941f060c99a'
+        for i, url in urls.items():
+            try:
+                u = URLInfo.objects.get(url=url)
+            except:
+                api = "product"
+                response = diffbot.request(url, token, api)
+                try:
+                    category = response['objects'][0]['category']
+                except:
+                    category = ""
+
+                api = "analyze"
+                response = diffbot.request(url, token, api)
+                type = response['type']
+                URLInfo.objects.create(
+                    url=url,
+                    type=type,
+                    category=category,
+                )
+
 
     def filling_bigram_table(self):
         start_time = t.time()
