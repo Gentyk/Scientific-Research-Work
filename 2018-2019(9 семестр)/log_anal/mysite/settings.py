@@ -77,7 +77,7 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'logbase',
+        'NAME': 'test_logbase',
         'USER': 'djdb',
         'PASSWORD': 'djdb',
         'HOST': 'localhost',

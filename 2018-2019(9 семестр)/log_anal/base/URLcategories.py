@@ -1,6 +1,6 @@
 # Просматривает таюлицу Лога и заполняет таблицу жанров
 
-from analyse.models import Bigrams, Log, Trigrams, URLInfo
+from analyse.models import Bigrams, Log, Trigrams, URLs
 from diffbot.client import DiffbotClient
 
 urls = Log.objects.values('url').distinct().values_list('url')

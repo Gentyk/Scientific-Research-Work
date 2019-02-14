@@ -1,13 +1,18 @@
-from django.test import TestCase
+import requests
 
-from work_files.analys import Main
+from django.test import TestCase, Client
+
+from base.analys import Main
 from ML.create_vectors import CreateVectors
 from ML.create_vectors_in_two_files import CreateVectorsApart
 
 
 class Test1(TestCase):
+    client = Client()
 
     def test1(self):
+        #requests.post('http://127.0.0.1:8000/user/')
+
         clicks = [5, 15, 30]#, 10, 15, 20]    # количество кликов, которое будет в одном векторе
         teams = {                   # команды и перечень тех, кто в них входит
             1: ('bv', 'im', 'ro'),
@@ -43,7 +48,7 @@ class Test1(TestCase):
                     CreateVectorsApart(data, names, clicks, day_parts, permission, 'team ' + str(num))
 
     def test2(self):
-        add_info_by_namedir = "bi f pause"
+        add_info_by_namedir = "continuous a"
         clicks = [5]#, 10, 15, 20]    # количество кликов, которое будет в одном векторе
         teams = {                   # команды и перечень тех, кто в них входит
             #1: ('bv', 'im', 'ro'),
@@ -77,5 +82,12 @@ class Test1(TestCase):
                 #Main(data[0], names, mode='work', team=str(num))
                 for permission in permissions:
                     CreateVectorsApart(data, names, clicks, day_parts, permission, 'team ' + str(num), add_info_by_namedir)
+
+    def test3(self):
+        resp = self.client.get('/user/')
+        print(resp.content)
+
+
+
 
 

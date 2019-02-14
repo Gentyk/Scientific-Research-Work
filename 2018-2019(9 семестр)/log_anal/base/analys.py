@@ -12,10 +12,10 @@ import xlsxwriter
 
 from analyse.models import Bigrams, Log, Trigrams
 
-PERIOD = 25 # период времени в днях из которого 70% будут использоваться для обучения, а 30% для тетстирования
+#PERIOD = 25 # период времени в днях из которого 70% будут использоваться для обучения, а 30% для тетстирования
 TIMES_OF_DAY = 8  # на сколько поделим день для анализа активности за день
-TOTAL_SECONDS = 10  # анализ пауз между включением компа и браузера -  шаг(диапазо)
-TOTAL_SECONDS_IN_MIN = 3  # аналогично, но в течение минуты
+#TOTAL_SECONDS = 10  # анализ пауз между включением компа и браузера -  шаг(диапазо)
+#TOTAL_SECONDS_IN_MIN = 3  # аналогично, но в течение минуты
 NUMBER_FREQUENT_URL = 20
 NUMBER_FREQUENT_DOMAINS = 20
 WIDTH = 32*5
@@ -31,6 +31,7 @@ class Main:
         for name in names:
             log = Log.objects.filter(username=name)
             u_log = (log.filter(thousand__lt=num) if mode != "min" else log)
+            print(u_log.latest('time'))
             finish_time = u_log.latest('time').time
 
             print(name)

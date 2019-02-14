@@ -92,7 +92,11 @@ class Users(models.Model):
     frequent_bi_categorys = models.TextField(default="")
     frequent_bi_types = models.TextField(default="")
 
-
+# Типы и жанры урлов
+class Domains(models.Model):
+    domain = models.CharField(default="", max_length=100)
+    type = models.TextField(db_index=True, default="")
+    category = models.TextField(db_index=True, default="")
 
 
 

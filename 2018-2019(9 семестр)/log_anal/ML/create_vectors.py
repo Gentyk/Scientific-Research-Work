@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime, timedelta
 
 from analyse.models import Log
-from work_files.analys import WIDTH, HEIGHT
+from base.analys import WIDTH, HEIGHT
 
 from ML import ML
 

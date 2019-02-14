@@ -1,8 +1,9 @@
+
 from os import listdir
 from os.path import isfile, join
 
 from analyse.models import Log, Bigrams, Trigrams
-from work_files.filling_the_database import Filling
+from base.filling_the_database import Filling
 
 #if __name__ == '__main__':
 Log.objects.all().delete()

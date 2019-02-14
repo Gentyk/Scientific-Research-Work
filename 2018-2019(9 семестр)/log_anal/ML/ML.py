@@ -1,9 +1,11 @@
 import csv
+import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
+from sklearn.preprocessing import normalize
 import time
 
 def ml(path, names):
@@ -11,19 +13,20 @@ def ml(path, names):
     with open(path + '\\TRAINING.csv', 'r') as f:
         reader = csv.reader(f, delimiter=',')
         n = len(next(reader))
-    time.sleep(1000)
+    time.sleep(2)
     # данные для обучения
-    df = pd.read_csv(path + '\\TRAINING.csv')
+    df = pd.read_csv(path + '\\TRAINING.csv', engine='python')
     df.columns = ['Y'] + ['X' + str(i) for i in range(n - 1)]
     df.head()
-    X = df.values[:, 1:n]
+    X = df.values[:, 1:]
     Y = df.values[:, 0]
+    len_X = len(X)
 
     # данные для тестирования
-    df1 = pd.read_csv(path + '\\TESTING.csv')
+    df1 = pd.read_csv(path + '\\TESTING.csv', engine='python')
     df1.columns = ['Y'] + ['X' + str(i) for i in range(n - 1)]
     df1.head()
-    test_X = df1.values[:, 1:n]
+    test_X = df1.values[:, 1:]
     test_Y = df1.values[:, 0]
     n_test = len(test_Y)
 
@@ -33,6 +36,15 @@ def ml(path, names):
         n_login_attempt[name] += 1
 
     print(n_login_attempt)
+
+    # # нормализация 2
+    # l_X = X.tolist()
+    # l_test_X = test_X.tolist()
+    # XX = l_X + l_test_X
+    # XX = np.asarray(XX)
+    # X2 = normalize(XX)
+    # X = X2[:len_X]
+    # test_X = X2[len_X:]
 
     # несколько алгоритмов МО
     ml = {'rf': RandomForestClassifier(),
@@ -62,6 +74,7 @@ def ml(path, names):
                     if result[i] != name and test_Y[i] == name:
                         FRR[name] += 1
             f.write('\n' +'точность:' + str(good / n_test))
+            print('\n' +'точность:' + str(good / n_test))
             summ_FAR = 0
             summ_FRR = 0
             for name in names:

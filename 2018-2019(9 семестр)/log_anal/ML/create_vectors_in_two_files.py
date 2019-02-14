@@ -29,7 +29,7 @@ class CreateVectorsApart(object):
     - частые триграммы всех пользователей (int [0, CLICKS-2])
     - для каждой частой триграммы считаем паузу. Если несколько, то среднюю среди пауз.
     """
-    def __init__(self, data, names, clicks, day_parts, permission, team_name):
+    def __init__(self, data, names, clicks, day_parts, permission, team_name, add_info_by_namedir=""):
         self.finish_time = None
         self.permission = permission
         self.team_name = team_name
@@ -55,10 +55,10 @@ class CreateVectorsApart(object):
         self.n_click = 0
         self.time_of_day = 0
         self.path = ""
-        self.main(clicks, day_parts)
+        self.main(clicks, day_parts, add_info_by_namedir)
 
 
-    def main(self, clicks, day_parts):
+    def main(self, clicks, day_parts, add_info_by_namedir):
         """
         Создает папочку для каждого случая и сбрасывает туда готовые датасеты и отчет
         """
@@ -67,7 +67,7 @@ class CreateVectorsApart(object):
                 # создаем папку для результатов
                 self.path = str(".\\dataset\\") + self.team_name \
                             + " perm " + str(self.permission) + " " +\
-                            str(time_of_day) + "t " + str(n_click) + "cl " + str(self.training)
+                            str(time_of_day) + "t " + str(n_click) + "cl " + str(self.training) + add_info_by_namedir
 
                 if not os.path.exists(self.path):
                     os.makedirs(self.path)
@@ -104,25 +104,29 @@ class CreateVectorsApart(object):
                 self.user_flag[name] = False
                 self.up_data(name)
 
+            path = self.path + "\\TRAINING.csv"
+            with open(path, 'w', newline='') as csvfile:
+                pass
+
             # обучающая выбока
             for i in self.names:
                 print('user ' + i + ' start writing training data')
-                result_by_file, train_vectors = self.create_vectors(i, num_file=1)
+                self.create_vectors(i, num_file=1, path=path)
                 print('user ' + i + ' success writing training data')
-                train += result_by_file[:]
-            path = self.path + "\\TRAINING.csv"
-            self.write_in_csv(path, train)
+
+
+            path = self.path + "\\TESTING.csv"
+            with open(path, 'w', newline='') as csvfile:
+                pass
 
             # выборка для тестирования
             for i in self.names:
                 print('user ' + i + ' start writing testing data')
-                result_by_file, test_vectors = self.create_vectors(i, num_file=2)
+                self.create_vectors(i, num_file=2, path=path)
                 print('user ' + i + ' success writing testing data')
-                test += result_by_file[:]
 
-            #на всякий случай запишем в файл
-            path = self.path + "\\TESTING.csv"
-            self.write_in_csv(path, test)
+
+
 
     def up_data(self, name, mode=None):
         """
@@ -146,9 +150,8 @@ class CreateVectorsApart(object):
             self.dom_trigrams_user[name] = [k for k in r_dict['domain триграммы']]
 
 
-    def create_vectors(self, name, num_file=None):
+    def create_vectors(self, name, num_file=None, path=""):
         size = 0
-        result = []
         result_by_file = []
         log = Log.objects.filter(username=name).filter(start_computer=False)
         if num_file == 1:
@@ -162,8 +165,10 @@ class CreateVectorsApart(object):
             size = all_v.count()
             all_values = all_v.order_by('id').values()
         print(size)
-        #old_day = current_time.day
-        for ind in range(0, size - self.n_click, self.n_click):
+
+        num = 0
+        for ind in range(0, size - self.n_click):
+            num += 1
             res = {}
             res_by_file = {'username': name}
             values = all_values[ind: ind + self.n_click]
@@ -189,16 +194,35 @@ class CreateVectorsApart(object):
             # считаем, сколько раз был на частых урлах
             # заполняем для них карту кликов
             urls = [0 for i in range(len(self.urls))]
+
             urls_map = [[0 for i in range(WIDTH * HEIGHT + 1)] for j in range(len(self.urls))]
 
+            urls_repeat_pause = [[] for i in range(len(self.urls))]
+            current_url = None
+            current_url_time = None
             for i in values:
                 if i['url'] in self.urls:
                     urls[self.urls.index(i['url'])] += 1
+
+                    # учитываем паузы, когда пользователь тыкается внутри
+                    if current_url == i['url'] and current_url_time and i['time'] - current_url_time < timedelta(seconds=1800):
+                        urls_repeat_pause[self.urls.index(i['url'])].append(i['time'] - current_url_time)
+                        current_url_time = i['time']
+                    else:
+                        current_url = i['url']
+                        current_url_time = i['time']
+
                     x, y = self.point(i)
                     if x and y:
                             urls_map[self.urls.index(i['url'])][y * WIDTH + x] += 1
             for i in range(len(urls)):
                 res['u' + str(i)] = urls[i]
+
+            for i in range(len(urls)):
+                if urls_repeat_pause[i] == []:
+                    res['u_freq_pause' + str(i)] = 0
+                else:
+                    res['u_freq_pause' + str(i)] = sum([i.seconds for i in urls_repeat_pause[i]])/len(urls_repeat_pause[i])
 
             if 'url_maps' in self.permission:
                 i = 0
@@ -212,21 +236,49 @@ class CreateVectorsApart(object):
             if 'domain' in self.permission or 'domain_maps' in self.permission:
                 domains = [0 for i in range(len(self.domains))]
                 domains_map = [[0 for i in range(WIDTH * HEIGHT + 1)] for j in range(len(self.domains))]
+
+                domain_repeat_pause = [[] for i in range(len(self.domains))]
+                current_domain = None
+                current_domain_time = None
                 for i in values:
                     if i['domain'] in self.domains:
                         domains[self.domains.index(i['domain'])] += 1#COEFFICIENT
+
+                        # учитываем паузы, когда пользователь тыкается внутри
+                        if current_domain == i['domain'] and current_domain_time and i['time'] - current_domain_time < timedelta(seconds=1800):
+                            domain_repeat_pause[self.domains.index(i['domain'])].append(i['time'] - current_domain_time)
+                            current_domain_time = i['time']
+                        else:
+                            current_domain = i['domain']
+                            current_domain_time = i['time']
+
                         x, y = self.point(i)
                         if x and y:
                             domains_map[self.domains.index(i['domain'])][y * WIDTH + x] += 1
             if 'domain' in self.permission:
                 for i in range(len(domains)):
                     res['d' + str(i)] = domains[i]
+
+            for i in range(len(domains)):
+                if domain_repeat_pause[i] == []:
+                    res['dom_freq_pause' + str(i)] = 0
+                else:
+                    try:
+                        res['dom_freq_pause' + str(i)] = sum([i.seconds for i in domain_repeat_pause[i]])/len(domain_repeat_pause[i])
+                    except:
+                        res['dom_freq_pause' + str(i)] = 0
+                        print(domain_repeat_pause[i])
+                        cc = input()
+
+
+
             if 'domain_maps' in self.permission:
                 i = 0
                 for map in domains_map:
                     for j in map:
                         res['d_map' + str(i)] = j
                         i += 1
+
 
             # паузы (средняя) - которая менее 5 мин
             times = [i['time'] for i in values]
@@ -235,17 +287,18 @@ class CreateVectorsApart(object):
             res['middle_pause'] = sum(pauses) / len(pauses)
 
             # # если был факт старта компа
-            # start = 0
-            # start_pause = 0
-            # starts = [i['start_computer'] for i in values]
-            # if any(starts):
-            #     times = [(i['time'], i['url']) for i in values]
-            #     for i in range(self.n_click):
-            #         if starts[i] and i + 1 < self.n_click and times[i + 1][1]:
-            #             start += 1
-            #             start_pause = (times[i + 1][0] - times[i][0]).seconds
-            # res['start'] = start
-            # res['start_pause'] = start_pause
+            if 'start_comp' in self.permission:
+                start = 0
+                start_pause = 0
+                starts = [i['start_computer'] for i in values]
+                if any(starts):
+                    times = [(i['time'], i['url']) for i in values]
+                    for i in range(self.n_click):
+                        if starts[i] and i + 1 < self.n_click and times[i + 1][1]:
+                            start += 1
+                            start_pause = (times[i + 1][0] - times[i][0]).seconds
+                res['start'] = start
+                res['start_pause'] = start_pause
 
             # проверяем наличие биграмм и триграмм
             url_bi = [0 for i in range(len(self.url_bigrams))]
@@ -320,9 +373,10 @@ class CreateVectorsApart(object):
 
             res_by_file.update(res)
             result_by_file.append(res_by_file)
-            result.append(list(res.values()))
-
-        return result_by_file, result
+            if num >= 1000:
+                self.write_in_csv(path, result_by_file)
+                num = 0
+                result_by_file = []
 
     def pause(self, mass):
         """
@@ -365,7 +419,7 @@ class CreateVectorsApart(object):
         Записывает в csv вектора пользователя
         """
         fieldnames = list(vectors[0].keys())
-        with open(path, 'w', newline='') as csvfile:
+        with open(path, 'a', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             for vector in vectors:
                 writer.writerow(vector)
@@ -447,7 +501,7 @@ class CreateVectorsApart(object):
         fdom_tri = [0 for i in range(len(self.dom_trigrams_user[name]))]
 
 
-        for ind in range(0, size - self.n_click, self.n_click):
+        for ind in range(0, size - self.n_click):
             values = all_values[ind: ind + self.n_click]
 
             url_and_dom = [(i['url'], i['domain']) for i in values]
