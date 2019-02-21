@@ -167,7 +167,7 @@ class CreateVectorsApart(object):
         print(size)
 
         num = 0
-        for ind in range(0, size - self.n_click):
+        for ind in range(0, size - self.n_click, self.n_click):
             num += 1
             res = {}
             res_by_file = {'username': name}

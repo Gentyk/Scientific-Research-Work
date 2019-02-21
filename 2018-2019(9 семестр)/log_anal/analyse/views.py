@@ -9,7 +9,7 @@ from django.shortcuts import render
 from django.views.generic.base import View
 from django.http import HttpResponse
 
-from analyse.models import Bigrams, Log, Trigrams, URLs
+from analyse.models import Bigrams, Log, Trigrams, Domains
 
 # Create your views here.
 class LogView(View):
@@ -17,6 +17,9 @@ class LogView(View):
     Отвечает за заполнение базы данных из файла лога
     """
     def post(self, request, *args, **kwargs):
+        """
+        Заполнение таблицы Log из всех файлов, которые лежат в папке logs
+        """
         Log.objects.all().delete()
         names = [f.split('.')[0] for f in listdir('logs') if isfile(join('logs', f))]
         for name in names:
@@ -100,8 +103,103 @@ class LogView(View):
                     print(e)
                     print(line)
             print("Log--[OK]--- %s seconds ---" % (time.time() - start_time))
-        return {"status": "ok"}
+        return HttpResponse(str({"status": "ok"}))
 
+    def get(self, request, *args, **kwargs):
+        """
+        Проверка отсутсвия нарушений при записи лога с точки зрения временной хронологии событий
+        """
+        names = [f.split('.')[0] for f in listdir('logs') if isfile(join('logs', f))]
+        result = {}
+        for name in names:
+            print("Start check %s data" % name)
+            with open('.\\logs\\' + name + '.txt') as file:
+                data = [line for line in file]
+
+            old_time = None
+            error_flag = False
+            for line_d in data:
+                try:
+                    line = line_d.split('\t')
+                    s = "sds"
+                    time = datetime.strptime(line[0], '%d.%m.%Y')
+                    if old_time and time < old_time:
+                        print("error:")
+                        print(old_time)
+                        print(time)
+                        result[name] = "error"
+                        error_flag = True
+                    else:
+                        old_time = time
+                except ValueError:
+                    pass
+
+            if not error_flag:
+                result[name] = "ok"
+                print("Successful check %s data" % name)
+            break
+        return HttpResponse(str(result))
+
+
+class GrammsView(View):
+    def post(self):
+        Bigrams.objects.all().delete()
+        Trigrams.objects.all().delete()
+        names = [f.split('.')[0] for f in listdir('logs') if isfile(join('logs', f))]
+        for name in names:
+            start_time = time.time()
+            log = Log.objects.filter(username=name).filter(start_computer=False)
+            start = log.earliest('seance').seance
+            end = log.latest('seance').seance
+            for i in range(start, end + 1):
+                values = log.filter(seance=i).order_by('id').values('time', 'url', 'domain')
+                n = len(values)
+                if n > 1:
+                    for j in range(n - 3):
+
+                        # # дополнительно достанем жанры и типы
+                        # types = []
+                        #
+                        # try:
+                        #     dom = Domains.objects.get(domain=domain)
+                        # except:
+
+                        Bigrams.objects.create(
+                            seance=i,
+                            username=name,
+                            time1=values[j]['time'],
+                            url1=values[j]['url'],
+                            domain1=values[j]['domain'],
+                            time2=values[j + 1]['time'],
+                            url2=values[j + 1]['url'],
+                            domain2=values[j + 1]['domain'],
+                        )
+                        if values[j]['url'] != values[j + 1]['url'] or values[j + 2]['url'] != values[j + 1]['url']:
+                            Trigrams.objects.create(
+                                seance=i,
+                                username=name,
+                                time1=values[j]['time'],
+                                url1=values[j]['url'],
+                                domain1=values[j]['domain'],
+                                time2=values[j + 1]['time'],
+                                url2=values[j + 1]['url'],
+                                domain2=values[j + 1]['domain'],
+                                time3=values[j + 2]['time'],
+                                url3=values[j + 2]['url'],
+                                domain3=values[j + 2]['domain'],
+                            )
+                    Bigrams.objects.create(
+                        seance=i,
+                        username=name,
+                        time1=values[n - 2]['time'],
+                        url1=values[n - 2]['url'],
+                        domain1=values[n - 2]['domain'],
+                        time2=values[n - 1]['time'],
+                        url2=values[n - 1]['url'],
+                        domain2=values[n - 1]['domain'],
+                    )
+            print("GR---[OK]--- %s seconds ---" % (time.time() - start_time))
+        return HttpResponse(str({"status": "ok"}))
 
 class UserView(View):
     """
@@ -110,6 +208,9 @@ class UserView(View):
     """
 
     def get(self, request, *args, **kwargs):
-        with open(".\\vova", "w") as f:
-            f.write("ddd")
+        """
+        Нахождение характерных признаков пользователей и занесение этих данных в базу данных
+        """
+        names = [f.split('.')[0] for f in listdir('logs') if isfile(join('logs', f))]
+        print(names)
         return HttpResponse("Hello, world. You're at the polls index.")
