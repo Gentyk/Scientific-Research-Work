@@ -16,12 +16,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.conf.urls import url
+from django.urls import include
 
-from analyse.views import GrammsView, UserView, LogView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    url('user/', UserView.as_view()),
-    url('log/', LogView.as_view()),
-    url('gramms/', GrammsView.as_view()),
+    path('info/', include('analyse.urls')),
 ]

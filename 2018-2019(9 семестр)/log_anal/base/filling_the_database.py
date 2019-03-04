@@ -4,6 +4,7 @@ from django.db.models import Avg, Max, Min, Sum
 from pytz import timezone
 import time
 import re
+from tkinter import messagebox
 
 
 from analyse.models import Bigrams, Log, Trigrams, URLs
@@ -13,12 +14,13 @@ from diffbot.client import DiffbotClient
 class Filling(object):
     def __init__(self, name):
         self.name = name
+        self.start_time = None
         self.filling_bd()
         #self.filling_categories()
         self.filling_bigram_table()
 
     def filling_bd(self):
-        start_time = time.time()
+        self.start_time = time.time()
         with open('.\\logs\\'+self.name+'.txt') as file:
             data = [line for line in file]
         last_active_time = None
@@ -94,9 +96,10 @@ class Filling(object):
             except ValueError:              # непонятная ошибка границы месяца
                 pass
             except Exception as e:
-                print(e)
-                print(line)
-        print("Log--[OK]--- %s seconds ---" % (time.time() - start_time))
+                raise e
+                #print(e)
+                #print(line)
+        #print("Log--[OK]--- %s seconds ---" % (time.time() - start_time))
 
     # def filling_categories(self):
     #     urls = Log.objects.values('url').distinct()
@@ -167,7 +170,9 @@ class Filling(object):
                     url2=values[n - 1]['url'],
                     domain2=values[n - 1]['domain'],
                 )
-        print("Bi---[OK]--- %s seconds ---" % (time.time() - start_time))
+        msg = "В базу данных внесены данные пользователя " + self.name + "за время: %s seconds ---" % (time.time() - self.start_time)
+        messagebox.showerror("Выполнено", msg)
+        #print("Bi---[OK]--- %s seconds ---" % (time.time() - start_time))
 
 
 
