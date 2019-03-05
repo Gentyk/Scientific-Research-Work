@@ -6,5 +6,5 @@ urlpatterns = [
     url('user/$', UserView.as_view()),
     url('users/$', UsersView.as_view()),
     url('base/$', BaseView.as_view()),
-    url('analyse/$', AnalyseView.as_view()),
+    url('analyse/$', AnalyseView.as_view(), name="analyse"),
 ]

@@ -1,4 +1,5 @@
 import calendar
+from datetime import datetime
 from datetime import datetime as dd, timedelta
 from django.db.models import Avg, Max, Min, Sum
 from django.db.models import F
@@ -593,6 +594,32 @@ class WorkAnalyst(Analyst):
         self.frequent_objects()
         self.n_gramms()
 
+class BaseWorkAnalyst(Analyst):
+    """
+    Класс, который отвечает за получение инфомации в случае, если никакая дополнительная информация не нужна.
+    в результате получаем словарь с данными.
+    """
+    def activity_analyse(self):
+        """
+        Если нам не нужны никакие дополнительные данные и графики
+        """
+        # получение частых объектов и частых n-грамм
+        self.frequent_objects()
+        self.n_gramms()
+
+    def frequent_objects(self):
+        # Пункт 2.0: наиболее частые урлы и частые домены
+        # Пункт 2.1: в скольки процентах сеансов мы встречаем частые объекты
+        # данные возвращаются в виде:
+        # [(объект, количество кликов, относительное количество кликов, пункт 2.1), ...]
+
+        all_urls = [url[0] for url in self.log.values_list('url').distinct()]
+        frequent_urls = self._get_frequent_objects_list(all_urls, 'url', NUMBER_FREQUENT_URL)
+        self.result['частые url'] = frequent_urls
+        all_domains = [domain[0] for domain in self.log.values_list('domain').distinct()]
+        frequent_domains = self._get_frequent_objects_list(all_domains, 'domain', NUMBER_FREQUENT_DOMAINS)
+        self.result['частые домены'] = frequent_domains
+
 
 class MinAnalyst(Analyst):
     """
@@ -633,6 +660,28 @@ class MinAnalyst(Analyst):
             j += 1
         row += 1
         workbook.close()
+
+
+def check_logfile(name):
+    with open('.\\logs\\' + name + '.txt') as file:
+        data = [line for line in file]
+
+    old_time = None
+    for line_d in data:
+        try:
+            line = line_d.split('\t')
+            s = "sds"
+            time = datetime.strptime(line[0], '%d.%m.%Y')
+            if old_time and time < old_time:
+                msg = "error:" + str(old_time) + " - " + str(time)
+                return msg
+            else:
+                old_time = time
+        except ValueError:
+            pass
+    return "+"
+
+
 
 
 

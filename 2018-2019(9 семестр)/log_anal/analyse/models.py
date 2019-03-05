@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 
 # основной лог, с которым будут проводится действия
 class Log(models.Model):
@@ -83,14 +84,12 @@ class URLs(models.Model):
 class Users(models.Model):
     username = models.CharField(db_index=True, default="I", max_length=50)
     team = models.IntegerField(db_index=True)
-    frequent_urls = models.TextField(default="")
-    frequent_bi_urls = models.TextField(default="")
-    frequent_tri_urls = models.TextField(default="")
-    frequent_domains = models.TextField(default="")
-    frequent_bi_domains = models.TextField(default="")
-    frequent_tri_domains = models.TextField(default="")
-    frequent_bi_categorys = models.TextField(default="")
-    frequent_bi_types = models.TextField(default="")
+    frequent_urls = ArrayField(models.TextField(default=""))
+    frequent_bi_urls = ArrayField(ArrayField(models.TextField(default="")))
+    frequent_tri_urls = ArrayField(ArrayField(models.TextField(default="")))
+    frequent_domains = ArrayField(models.TextField(default=""))
+    frequent_bi_domains = ArrayField(ArrayField(models.TextField(default="")))
+    frequent_tri_domains = ArrayField(ArrayField(models.TextField(default="")))
 
 # Типы и жанры урлов
 class Domains(models.Model):

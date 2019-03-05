@@ -1,15 +1,27 @@
 # заполняет БД данными из папки logs
 from datetime import datetime as dd
 from django.db.models import Avg, Max, Min, Sum
+from os import listdir
+from os.path import isfile, join
 from pytz import timezone
 import time
 import re
 from tkinter import messagebox
+import threading
 
 
 from analyse.models import Bigrams, Log, Trigrams, URLs
 from diffbot.client import DiffbotClient
 
+
+def fil():
+    start_time = time.time()
+    log_names = [f.split('.')[0] for f in listdir('logs') if isfile(join('logs', f))]
+    for name in log_names:
+        Filling(name)
+    msg = "В базу данных внесены данные пользователей за время: %s seconds ---" % (
+    time.time() - start_time)
+    messagebox.showerror("Выполнено", msg)
 
 class Filling(object):
     def __init__(self, name):
@@ -20,7 +32,7 @@ class Filling(object):
         self.filling_bigram_table()
 
     def filling_bd(self):
-        self.start_time = time.time()
+
         with open('.\\logs\\'+self.name+'.txt') as file:
             data = [line for line in file]
         last_active_time = None
@@ -170,8 +182,7 @@ class Filling(object):
                     url2=values[n - 1]['url'],
                     domain2=values[n - 1]['domain'],
                 )
-        msg = "В базу данных внесены данные пользователя " + self.name + "за время: %s seconds ---" % (time.time() - self.start_time)
-        messagebox.showerror("Выполнено", msg)
+
         #print("Bi---[OK]--- %s seconds ---" % (time.time() - start_time))
 
 
