@@ -1,6 +1,6 @@
 from django.conf.urls import url
 
-from analyse.views import UserView, UsersView, BaseView, AnalyseView, InfoView
+from analyse.views import UserView, UsersView, BaseView, AnalyseView, InfoView, MLView
 
 urlpatterns = [
     url('info/$', InfoView.as_view()),
@@ -8,4 +8,5 @@ urlpatterns = [
     url('users/$', UsersView.as_view(), name="users"),
     url('base/$', BaseView.as_view(), name="database"),
     url('analyse/$', AnalyseView.as_view(), name="analyse"),
+    url('ML/$', MLView.as_view(), name="ML"),
 ]

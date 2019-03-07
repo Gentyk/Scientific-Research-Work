@@ -80,7 +80,7 @@ class URLs(models.Model):
     type = models.TextField(db_index=True, default="")
     category = models.TextField(db_index=True, default="")
 
-
+# Важные личные признаки пользователей
 class Users(models.Model):
     username = models.CharField(db_index=True, default="I", max_length=50)
     team = models.IntegerField(db_index=True)
@@ -97,6 +97,21 @@ class Domains(models.Model):
     domain = models.CharField(default="", max_length=100)
     type = models.TextField(db_index=True, default="")
     category = models.TextField(db_index=True, default="")
+
+
+class ML(models.Model):
+    team = models.IntegerField(db_index=True)
+    clicks = models.IntegerField(default=0)
+    num_users = models.IntegerField(default=0)
+    patterns = ArrayField(models.TextField(default=""))
+    middleFAR = models.FloatField(default=0.0)
+    middleFRR = models.FloatField(default=0.0)
+    accuracy = models.FloatField(default=0.0)
+
+
+
+
+
 
 
 

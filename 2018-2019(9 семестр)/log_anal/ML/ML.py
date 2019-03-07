@@ -1,26 +1,32 @@
 import csv
 import numpy as np
 import pandas as pd
+import time
+
+from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
-from sklearn.preprocessing import normalize
-import time
 
-def ml(path, names):
-    # находим количество столбцов в csv
+from analyse.models import ML
+
+def classification(path, names, algorithms, info):
+
+    # данные для обучения
     with open(path + '\\TRAINING.csv', 'r') as f:
         reader = csv.reader(f, delimiter=',')
         n = len(next(reader))
-    time.sleep(2)
-    # данные для обучения
+    time.sleep(1)
     df = pd.read_csv(path + '\\TRAINING.csv', engine='python')
     df.columns = ['Y'] + ['X' + str(i) for i in range(n - 1)]
     df.head()
     X = df.values[:, 1:]
     Y = df.values[:, 0]
-    len_X = len(X)
+    # нормализация
+    scaler = StandardScaler()
+    scaler.fit(X)
+    X = scaler.transform(X)
 
     # данные для тестирования
     df1 = pd.read_csv(path + '\\TESTING.csv', engine='python')
@@ -29,6 +35,7 @@ def ml(path, names):
     test_X = df1.values[:, 1:]
     test_Y = df1.values[:, 0]
     n_test = len(test_Y)
+    test_X = scaler.transform(test_X)
 
     # данные для определения FAR и FRR
     n_login_attempt = {name: 0 for name in names}  # сколько раз легитимный пользователь пытался войти
@@ -37,19 +44,16 @@ def ml(path, names):
 
     print(n_login_attempt)
 
-    # # нормализация 2
-    # l_X = X.tolist()
-    # l_test_X = test_X.tolist()
-    # XX = l_X + l_test_X
-    # XX = np.asarray(XX)
-    # X2 = normalize(XX)
-    # X = X2[:len_X]
-    # test_X = X2[len_X:]
-
     # несколько алгоритмов МО
-    ml = {'rf': RandomForestClassifier(),
-          'lg': LogisticRegression(),
-          'SVC': SVC()}
+    ml_alg = {
+        'rf': RandomForestClassifier(),
+        'lg': LogisticRegression(),
+        'SVC': SVC()
+    }
+    ml = {}
+    for alg in ml_alg:
+        if alg in algorithms:
+            ml[alg] = ml_alg[alg]
 
     with open(path + "\\otch.txt", 'w') as f:
         f.write(str(names) + " " + str(n))
@@ -73,8 +77,9 @@ def ml(path, names):
                         FAR[name] += 1
                     if result[i] != name and test_Y[i] == name:
                         FRR[name] += 1
-            f.write('\n' +'точность:' + str(good / n_test))
-            print('\n' +'точность:' + str(good / n_test))
+            accuracy = good / n_test
+            f.write('\n' +'точность:' + str(accuracy))
+            #print('\n' +'точность:' + str(good / n_test))
             summ_FAR = 0
             summ_FRR = 0
             for name in names:
@@ -82,5 +87,17 @@ def ml(path, names):
                 f.write('\n' + name + " FRR:" + str(FRR[name] / n_login_attempt[name]))
                 summ_FAR += FAR[name] / n_test
                 summ_FRR += FRR[name] / n_login_attempt[name]
-            f.write("\nсредний FAR:" + str(summ_FAR / len(names)))
-            f.write("\nсредний FRR:" + str(summ_FRR / len(names)))
+            middleFAR = summ_FAR / len(names)
+            middleFRR = summ_FRR / len(names)
+            f.write("\nсредний FAR:" + str(middleFAR))
+            f.write("\nсредний FRR:" + str(middleFRR))
+
+            ML.objects.create(
+                team = info['team'],
+                clicks = info['clicks'],
+                num_users = len(names),
+                patterns = info['patterns'],
+                middleFAR = middleFAR,
+                middleFRR = middleFRR,
+                accuracy = accuracy,
+            )

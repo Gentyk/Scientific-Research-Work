@@ -14,7 +14,7 @@ from analyse.models import Bigrams, Log, Trigrams, URLs
 from diffbot.client import DiffbotClient
 
 
-def fil():
+def filling():
     start_time = time.time()
     log_names = [f.split('.')[0] for f in listdir('logs') if isfile(join('logs', f))]
     for name in log_names:

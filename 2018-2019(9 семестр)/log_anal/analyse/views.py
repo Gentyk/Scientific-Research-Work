@@ -13,8 +13,16 @@ from django.views.generic.base import View
 
 from analyse.models import Bigrams, Log, Trigrams, Domains, Users
 from base.new_analyse import base_analyse
-from base.filling_the_database import fil
+from base.filling_the_database import filling
+from base.base import train_and_test
 
+def get_selection(request, full_array):
+    find_array = []
+    for elem in full_array:
+        obj = request.POST.get(elem)
+        if obj:
+            find_array.append(elem)
+    return find_array
 
 class InfoView(View):
     def get(self, request, *args, **kwargs):
@@ -79,7 +87,7 @@ class UsersView(View):
         Log.objects.all().delete()
         Trigrams.objects.all().delete()
 
-        t = threading.Thread(target=fil)
+        t = threading.Thread(target=filling)
         t.start()
         return HttpResponse("success")
 
@@ -141,40 +149,50 @@ class AnalyseView(View):
         if Users.objects.filter(team=team):
             Users.objects.filter(team=team).delete()
         clicks_thousand = int(request.POST["clicks"])
-        users = []
-        for name in self.names:
-            num = request.POST.get(name)
-            if num:
-                users.append(name)
-
+        users = get_selection(request, self.names)
         t = threading.Thread(target=base_analyse, args=(team, clicks_thousand, users,))
         t.start()
         return HttpResponse("success")
 
 
 class MLView(View):
+    """
+    Запуск процесса формирования обучающих выборок или машинного обучения. В get запросе выводится менюшка для задания
+    параметров.
+    """
+    teams = [str(team[0]) for team in Users.objects.distinct('team').values_list('team')]
+    clicks = ['5', '15', '30']
+    patterns = ['domain', 'dom_bi', 'dom_tri', 'domain_maps', 'url_maps', 'grams_pause', 'url_bi', 'url_tri']
+    algorithms = ['rf', 'lg', 'SVC']
+    action = ['train', 'ML']
+
     def get(self, request, *args, **kwargs):
-        teams = [team[0] for team in Users.objects.distinct('team').values_list('team')]
-        clicks = [5, 15, 30]
-        column_names = {'name': 'user', 'all': 'all', '1': '1 week', '2': '2 weeks', '3': '3 weeks'}
-        data = {'users': self.names, 'users_table': [column_names], 'teams_table': []}
-        for name in self.names:
-            log = Log.objects.filter(username=name)
-            start_time = log.earliest('time').time
-            data['users_table'].append({
-                'name': name,
-                'all': log.count(),
-                '1': log.filter(time__lte=start_time + timedelta(days=7)).count(),
-                '2': log.filter(time__lte=start_time + timedelta(days=14)).count(),
-                '3': log.filter(time__lte=start_time + timedelta(days=21)).count(),
-            })
+        data = {
+            'teams': self.teams,
+            'clicks': self.clicks,
+            'patterns': self.patterns,
+            'algorithms': self.algorithms,
+            'action': self.action,
+        }
+        return render(request, 'analyse/ML_run.html', data)
 
-        data['teams_table'].append({'team': 'team', 'user': 'user', 'thousand': 'thousand'})
-        u_data = Users.objects.values('team', 'username', 'thousand')
-        for i in u_data:
-            data['teams_table'].append({'team': i['team'], 'user': i['username'], 'thousand': i['thousand']})
+    def post(self, request):
+        selected_teams = [int(i) for i in get_selection(request, self.teams)]
+        selected_clicks = [int(i) for i in get_selection(request, self.clicks)]
+        selected_patterns = get_selection(request, self.patterns)
+        selected_algorithms = get_selection(request, self.algorithms)
+        selected_action = get_selection(request, self.action)
+        print(selected_teams)
+        print(selected_clicks)
+        print(selected_patterns)
+        print(selected_algorithms)
+        print(selected_action)
+        t = threading.Thread(target=train_and_test, args=(selected_clicks, [8], selected_patterns, selected_teams,
+                                                          selected_algorithms, "", selected_action,))
+        t.start()
+        return HttpResponse("success")
 
-        return render(request, 'analyse/users_analyse.html', data)
+
 
 
 

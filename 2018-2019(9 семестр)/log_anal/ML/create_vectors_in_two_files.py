@@ -1,22 +1,21 @@
 import csv
 from datetime import timedelta
 import json
-import os
 import numpy as np
 import random
 import requests
 import xlsxwriter
 import vk_api
 
-from analyse.models import Log
-from ML import ML
+from analyse.models import Log, Users
 
 WIDTH = 7
 HEIGHT = 5
 
+
 class CreateVectorsApart(object):
     """
-    Создаем вектора для классификации. Каждый вектор содечжит n=CLICKS кликов. Вектор содержит следующие столбцы:
+    Создаем вектора для классификации. Каждый вектор содержит n=CLICKS кликов. Вектор содержит следующие столбцы:
     - имя (str)
     - день недели
     - время клика (день разделен на n частей)
@@ -29,7 +28,16 @@ class CreateVectorsApart(object):
     - частые триграммы всех пользователей (int [0, CLICKS-2])
     - для каждой частой триграммы считаем паузу. Если несколько, то среднюю среди пауз.
     """
-    def __init__(self, data, names, clicks, day_parts, permission, team_name, add_info_by_namedir=""):
+    def __init__(self, path, data, names, clicks, day_parts, permission, team_name, add_info_by_namedir=""):
+        """
+        :param data: (кол-во кликов для обучения/кол-во кликов всего)
+        :param names: массив имен всех пользователей
+        :param clicks: массив кол-ва кликов в векторе (5/15/30)
+        :param day_parts: на сколько частей мы делим день
+        :param permission: список признаков, которые мы хотим увидеть в векторе
+        :param team_name: имя команды
+        :param add_info_by_namedir: приписка к ф
+        """
         self.finish_time = None
         self.permission = permission
         self.team_name = team_name
@@ -52,38 +60,10 @@ class CreateVectorsApart(object):
         self.period = data[1]   # количество данных за период обучения и тестирования
         self.training = data[0] # количество данных за период обучения
         self.names = names
-        self.n_click = 0
-        self.time_of_day = 0
-        self.path = ""
-        self.main(clicks, day_parts, add_info_by_namedir)
-
-
-    def main(self, clicks, day_parts, add_info_by_namedir):
-        """
-        Создает папочку для каждого случая и сбрасывает туда готовые датасеты и отчет
-        """
-        for time_of_day in day_parts:
-            for n_click in clicks:
-                # создаем папку для результатов
-                self.path = str(".\\dataset\\") + self.team_name \
-                            + " perm " + str(self.permission) + " " +\
-                            str(time_of_day) + "t " + str(n_click) + "cl " + str(self.training) + add_info_by_namedir
-
-                if not os.path.exists(self.path):
-                    os.makedirs(self.path)
-
-                self.n_click = n_click
-                self.time_of_day = time_of_day
-                self.run()
-
-                # запускаем МО
-                try:
-                    ML.ml(self.path, self.names)
-                except:
-                    pass
-                print('good end')
-                print("\n time" + str(time_of_day) + " clicks:" + str(n_click))
-                print("\n" + str(self.names))
+        self.n_click = clicks
+        self.time_of_day = day_parts
+        self.path = path
+        self.run()
 
     def run(self, mode = 'normal'):
         # иногда надо проверить обучающую выборку
@@ -98,11 +78,9 @@ class CreateVectorsApart(object):
 
         # обычный режим
         else:
-            train = []
-            test = []
             for name in self.names:
                 self.user_flag[name] = False
-                self.up_data(name)
+                self.up_data_from_db(name)
 
             path = self.path + "\\TRAINING.csv"
             with open(path, 'w', newline='') as csvfile:
@@ -116,7 +94,7 @@ class CreateVectorsApart(object):
 
 
             path = self.path + "\\TESTING.csv"
-            with open(path, 'w', newline='') as csvfile:
+            with open(path, 'w', newline='') as csvfile2:
                 pass
 
             # выборка для тестирования
@@ -125,10 +103,19 @@ class CreateVectorsApart(object):
                 self.create_vectors(i, num_file=2, path=path)
                 print('user ' + i + ' success writing testing data')
 
+    def up_data_from_db(self, name):
+        log = Users.objects.filter(team=self.team_name).get(username=name)
 
+        # частые объекты всех пользователей без повторений
+        self.urls = list(set(self.urls + log.frequent_urls))
+        self.domains = list(set(self.domains + log.frequent_domains))
 
+        self.url_bigrams = list(set(self.url_bigrams + [tuple(k) for k in log.frequent_bi_urls]))
+        self.dom_bigrams = list(set(self.dom_bigrams + [tuple(k) for k in log.frequent_bi_domains]))
+        self.url_trigrams = list(set(self.url_trigrams + [tuple(k) for k in log.frequent_tri_urls]))
+        self.dom_trigrams = list(set(self.dom_trigrams + [tuple(k) for k in log.frequent_tri_domains]))
 
-    def up_data(self, name, mode=None):
+    def up_data_from_file(self, name, mode=None):
         """
         Достаем данные специфичные для пользоваетля-владельца
         """
@@ -259,16 +246,16 @@ class CreateVectorsApart(object):
                 for i in range(len(domains)):
                     res['d' + str(i)] = domains[i]
 
-            for i in range(len(domains)):
-                if domain_repeat_pause[i] == []:
-                    res['dom_freq_pause' + str(i)] = 0
-                else:
-                    try:
-                        res['dom_freq_pause' + str(i)] = sum([i.seconds for i in domain_repeat_pause[i]])/len(domain_repeat_pause[i])
-                    except:
+                for i in range(len(domains)):
+                    if domain_repeat_pause[i] == []:
                         res['dom_freq_pause' + str(i)] = 0
-                        print(domain_repeat_pause[i])
-                        cc = input()
+                    else:
+                        try:
+                            res['dom_freq_pause' + str(i)] = sum([i.seconds for i in domain_repeat_pause[i]])/len(domain_repeat_pause[i])
+                        except:
+                            res['dom_freq_pause' + str(i)] = 0
+                            print(domain_repeat_pause[i])
+                            cc = input()
 
 
 
@@ -377,6 +364,8 @@ class CreateVectorsApart(object):
                 self.write_in_csv(path, result_by_file)
                 num = 0
                 result_by_file = []
+        if result_by_file:
+            self.write_in_csv(path, result_by_file)
 
     def pause(self, mass):
         """
