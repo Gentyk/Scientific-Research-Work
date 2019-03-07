@@ -350,19 +350,19 @@ class Analyst(object):
         Функция, которая получает информацию о биграммах и триграммах пользователя и записывает их в словарь
         """
         urls_bigrams, domains_bigrams = self._bigramm()
-        print(len(urls_bigrams))
-        print(len(domains_bigrams))
+        # print(len(urls_bigrams))
+        # print(len(domains_bigrams))
         self.result['url биграммы'] = urls_bigrams
         self.result['domain биграммы'] = domains_bigrams
 
         urls_trigrams, domains_trigrams = self._trigramm()
-        print(len(urls_trigrams))
-        print(len(domains_trigrams))
+        # print(len(urls_trigrams))
+        # print(len(domains_trigrams))
         self.result['url триграммы'] = urls_trigrams
         self.result['domain триграммы'] = domains_trigrams
 
     def _bigramm(self):
-        print('биграммы начало')
+        # print('биграммы начало')
         bi_gramms = {}
         a = self.bi.only('url1', 'url2').exclude(url1=F('url2')).distinct('url1', 'url2').values_list('url1', 'url2')
         mass = []
@@ -418,11 +418,11 @@ class Analyst(object):
                     break
             if len(result_bid_gramms) >= 15:
                 break
-        print('биграммы конец')
+        # print('биграммы конец')
         return result_bi_gramms, result_bid_gramms
 
     def _trigramm(self):
-        print('триграммы начало')
+        # print('триграммы начало')
         th_gramms = {}
         a = self.tri.only('url1', 'url2', 'url3').distinct('url1', 'url2', 'url3').values_list('url1', 'url2', 'url3')
         mass = []
@@ -486,7 +486,7 @@ class Analyst(object):
                     break
             if len(resultb_gramms) >= 10:
                 break
-        print('триграммы конец')
+        # print('триграммы конец')
         return result_gramms, resultb_gramms
 
     # Пункт 5: графический отчет

@@ -16,6 +16,13 @@ from base.new_analyse import base_analyse
 from base.filling_the_database import fil
 
 
+class InfoView(View):
+    def get(self, request, *args, **kwargs):
+        """
+        Вывод общей информации
+        """
+        return render(request, 'analyse/info.html')
+
 class UsersView(View):
     """
     Находит частные штучкки пользователей и заносит их в базу данных. По требованию достает инфу о каждом доступном
@@ -119,10 +126,10 @@ class AnalyseView(View):
                 '3': log.filter(time__lte=start_time + timedelta(days=21)).count(),
             })
 
-        data['teams_table'].append({'team': 'team', 'user': 'user'})
-        u_data = Users.objects.values('team', 'username')
+        data['teams_table'].append({'team': 'team', 'user': 'user', 'thousand': 'thousand'})
+        u_data = Users.objects.values('team', 'username', 'thousand')
         for i in u_data:
-            data['teams_table'].append({'team': i['team'], 'user': i['username']})
+            data['teams_table'].append({'team': i['team'], 'user': i['username'], 'thousand': i['thousand']})
 
         return render(request, 'analyse/users_analyse.html', data)
 
@@ -143,6 +150,32 @@ class AnalyseView(View):
         t = threading.Thread(target=base_analyse, args=(team, clicks_thousand, users,))
         t.start()
         return HttpResponse("success")
+
+
+class MLView(View):
+    def get(self, request, *args, **kwargs):
+        teams = [team[0] for team in Users.objects.distinct('team').values_list('team')]
+        clicks = [5, 15, 30]
+        column_names = {'name': 'user', 'all': 'all', '1': '1 week', '2': '2 weeks', '3': '3 weeks'}
+        data = {'users': self.names, 'users_table': [column_names], 'teams_table': []}
+        for name in self.names:
+            log = Log.objects.filter(username=name)
+            start_time = log.earliest('time').time
+            data['users_table'].append({
+                'name': name,
+                'all': log.count(),
+                '1': log.filter(time__lte=start_time + timedelta(days=7)).count(),
+                '2': log.filter(time__lte=start_time + timedelta(days=14)).count(),
+                '3': log.filter(time__lte=start_time + timedelta(days=21)).count(),
+            })
+
+        data['teams_table'].append({'team': 'team', 'user': 'user', 'thousand': 'thousand'})
+        u_data = Users.objects.values('team', 'username', 'thousand')
+        for i in u_data:
+            data['teams_table'].append({'team': i['team'], 'user': i['username'], 'thousand': i['thousand']})
+
+        return render(request, 'analyse/users_analyse.html', data)
+
 
 
 

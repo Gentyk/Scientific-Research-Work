@@ -90,6 +90,7 @@ class Users(models.Model):
     frequent_domains = ArrayField(models.TextField(default=""))
     frequent_bi_domains = ArrayField(ArrayField(models.TextField(default="")))
     frequent_tri_domains = ArrayField(ArrayField(models.TextField(default="")))
+    thousand = models.IntegerField(db_index=True, default=0)    # номер тысячи
 
 # Типы и жанры урлов
 class Domains(models.Model):
