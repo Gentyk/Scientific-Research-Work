@@ -1,0 +1,14 @@
+<body>
+<form action="{% url 'analyse' %}" method="get">
+    <input type="submit" value="Информация по анализу или его запуск">
+</form>
+<form action="{% url 'database' %}" method="get">
+    <input type="submit" value="Информация по таблицам бд">
+</form>
+<form action="{% url 'users' %}" method="get">
+    <input type="submit" value="Информация по пользователям">
+</form>
+<form action="{% url 'ML' %}" method="get">
+    <input type="submit" value="ML">
+</form>
+</body>

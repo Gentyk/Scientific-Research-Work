@@ -1,0 +1,12 @@
+{% if tables_list %}
+        <table  bordercolor="black" border="1">
+            {% for date in tables_list %}
+            <tr class='success'>
+                <td>{{ date.name }}</td>
+                <td>{{ date.count }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+{% else %}
+    <p>No tables' info.</p>
+{% endif %}

@@ -93,12 +93,12 @@ class Analyst(object):
         result_bi_gramms = []
         for n in mass:
             for objs in bi_gramms[n]:
-                result_bi_gramms.append(tuple([objs[0], objs[1]]))
+                result_bi_gramms.append([objs[0], objs[1]])
                 if len(result_bi_gramms) >= 15:
                     break
             if len(result_bi_gramms) >= 15:
                 break
-        return result_bi_gramms,
+        return result_bi_gramms
 
     def _trigramm(self, col1, col2, col3):
         th_gramms = {}
@@ -117,7 +117,7 @@ class Analyst(object):
         result_gramms = []
         for n in mass:
             for data in th_gramms[n]:
-                result_gramms.append(tuple([data[0], data[1], data[2]]))
+                result_gramms.append([data[0], data[1], data[2]])
                 if len(result_gramms) >= 10:
                     break
             if len(result_gramms) >= 10:
