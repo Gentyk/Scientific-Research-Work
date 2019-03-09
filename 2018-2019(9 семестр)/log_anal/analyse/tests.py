@@ -48,8 +48,8 @@ class Test1(TestCase):
                     CreateVectorsApart(data, names, clicks, day_parts, permission, 'team ' + str(num))
 
     def test2(self):
-        add_info_by_namedir = "continuous a"
-        clicks = [5]#, 10, 15, 20]    # количество кликов, которое будет в одном векторе
+        add_info_by_namedir = " new"
+        clicks = [15]#, 10, 15, 20]    # количество кликов, которое будет в одном векторе
         teams = {                   # команды и перечень тех, кто в них входит
             #1: ('bv', 'im', 'ro'),
             #2: ('bv', 'dy', 'im')
@@ -62,19 +62,31 @@ class Test1(TestCase):
 
         day_parts = [8] # на сколько частей делим день
         permissions = [
-            # ['-'],
-            # ['domain'],
+            ['-'],
+            ['domain_maps'],
+
+            ['domain'],
             ['domain', 'domain_maps'],
-            # ['domain', 'url_maps'],
-            # ['domain', 'url_maps', 'domain_maps'],
+
+            ['domain', 'url_maps'],
+            ['domain', 'url_maps', 'domain_maps'],
+
+            ['domain', 'dom_bi', 'dom_tri', 'grams_pause'],
+            ['domain', 'dom_bi', 'dom_tri', 'domain_maps', 'grams_pause'],
+
+            ['domain', 'dom_bi', 'dom_tri', 'url_maps', 'grams_pause', 'url_bi', 'url_tri'],
+            ['domain', 'dom_bi', 'dom_tri', 'domain_maps', 'url_maps', 'grams_pause', 'url_bi', 'url_tri'],
             # ['domain', 'dom_bi'],
             # ['domain', 'dom_bi', 'dom_tri'],
             # ['domain', 'dom_bi', 'dom_tri', 'url_bi', 'url_tri'],
             # ['domain', 'url_bi', 'url_tri'],
             # ['domain', 'dom_bi', 'dom_tri', 'grams_pause'],
-            # ['domain', 'dom_bi', 'dom_tri', 'domain_maps', 'grams_pause'],
+
+            #['domain', 'dom_bi', 'dom_tri', 'domain_maps', 'url_maps', 'grams_pause'],
             #['domain', 'domain_maps', 'url_maps', 'start_comp'],
-            #['domain', 'dom_bi', 'dom_tri', 'domain_maps', 'url_maps', 'grams_pause', 'url_bi', 'url_tri'],
+
+            # ['domain', 'dom_bi', 'dom_tri', 'grams_pause', 'url_bi', 'url_tri'],
+
         ]
         for num, names in teams.items():
             print('team ' + str(num))
@@ -84,7 +96,8 @@ class Test1(TestCase):
                     CreateVectorsApart(data, names, clicks, day_parts, permission, 'team ' + str(num), add_info_by_namedir)
 
     def test3(self):
-        resp = self.client.get('/user/')
+        payload = {'key1': ['value1', 'kk'] , 'key2': 'value2'}
+        resp = self.client.get('/user/', payload)
         print(resp.content)
 
 

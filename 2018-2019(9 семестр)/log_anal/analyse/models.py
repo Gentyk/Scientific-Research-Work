@@ -21,6 +21,9 @@ class Log(models.Model):
     username = models.CharField(db_index=True, default="I", max_length=50)
 
     thousand = models.IntegerField(db_index=True, default=0)    # номер тысячи - для ускорения анализа
+    domain_type = models.TextField(db_index=True, default="")
+    domain_category = models.TextField(db_index=True, default="")
+
 
 
 # биграммы
@@ -88,9 +91,15 @@ class Users(models.Model):
     frequent_bi_urls = ArrayField(ArrayField(models.TextField(default="")))
     frequent_tri_urls = ArrayField(ArrayField(models.TextField(default="")))
     frequent_domains = ArrayField(models.TextField(default=""))
-    frequent_bi_domains = ArrayField(ArrayField(models.TextField(default="")))
+    frequent_domains_categories = ArrayField(models.TextField(default=""), default=list)
+    frequent_bi_domains = ArrayField(ArrayField(models.TextField(default="")),)
+    frequent_bi_domains_type = ArrayField(ArrayField(models.TextField(default="")), default=list)
+    frequent_bi_domains_categories = ArrayField(ArrayField(models.TextField(default="")), default=list)
     frequent_tri_domains = ArrayField(ArrayField(models.TextField(default="")))
+    frequent_tri_domains_type = ArrayField(ArrayField(models.TextField(default="")), default=list)
+    frequent_tri_domains_categories = ArrayField(ArrayField(models.TextField(default="")), default=list)
     thousand = models.IntegerField(db_index=True, default=0)    # номер тысячи
+
 
 # Типы и жанры урлов
 class Domains(models.Model):

@@ -1,18 +1,12 @@
 # заполняет БД данными из папки logs
 from datetime import datetime as dd
-from django.db.models import Avg, Max, Min, Sum
 from os import listdir
 from os.path import isfile, join
 from pytz import timezone
 import time
 import re
-from tkinter import messagebox
-import threading
 
-
-from analyse.models import Bigrams, Log, Trigrams, URLs
-from diffbot.client import DiffbotClient
-
+from analyse.models import Bigrams, Log, Trigrams, Domains
 
 def filling():
     start_time = time.time()
@@ -21,7 +15,7 @@ def filling():
         Filling(name)
     msg = "В базу данных внесены данные пользователей за время: %s seconds ---" % (
     time.time() - start_time)
-    messagebox.showerror("Выполнено", msg)
+    print(msg)
 
 class Filling(object):
     def __init__(self, name):
@@ -87,6 +81,7 @@ class Filling(object):
                 if num_in_thousand >= 1000:
                     num_in_thousand = 0
                     thousand += 1
+                query = Domains.objects.get(domain=domain)
                 p = Log(
                     day=day,
                     time=time1,
@@ -101,7 +96,9 @@ class Filling(object):
                     url=url,
                     domain=domain,
                     seance=seance,
-                    thousand=thousand
+                    thousand=thousand,
+                    domain_type=query.type,
+                    domain_category=query.category,
                 )
                 p.save()
                 last_active_time = time1
@@ -154,9 +151,13 @@ class Filling(object):
                         time1=values[j]['time'],
                         url1=values[j]['url'],
                         domain1=values[j]['domain'],
+                        type1=values[j]['domain_type'],
+                        category1=values[j]['domain_category'],
                         time2=values[j + 1]['time'],
                         url2=values[j + 1]['url'],
                         domain2=values[j + 1]['domain'],
+                        type2=values[j + 1]['domain_type'],
+                        category2=values[j + 1]['domain_category'],
                         )
                     if values[j]['url'] != values[j + 1]['url'] or values[j + 2]['url'] != values[j + 1]['url']:
                         Trigrams.objects.create(
@@ -165,12 +166,18 @@ class Filling(object):
                             time1=values[j]['time'],
                             url1=values[j]['url'],
                             domain1=values[j]['domain'],
+                            type1=values[j]['domain_type'],
+                            category1=values[j]['domain_category'],
                             time2=values[j + 1]['time'],
                             url2=values[j + 1]['url'],
                             domain2=values[j + 1]['domain'],
+                            type2=values[j + 1]['domain_type'],
+                            category2=values[j + 1]['domain_category'],
                             time3=values[j + 2]['time'],
                             url3=values[j + 2]['url'],
                             domain3=values[j + 2]['domain'],
+                            type3=values[j + 2]['domain_type'],
+                            category3=values[j + 2]['domain_category'],
                         )
                 Bigrams.objects.create(
                     seance=i,
@@ -178,9 +185,13 @@ class Filling(object):
                     time1=values[n - 2]['time'],
                     url1=values[n - 2]['url'],
                     domain1=values[n - 2]['domain'],
+                    type1=values[n - 2]['domain_type'],
+                    category1=values[n - 2]['domain_category'],
                     time2=values[n - 1]['time'],
                     url2=values[n - 1]['url'],
                     domain2=values[n - 1]['domain'],
+                    type2=values[n - 1]['domain_type'],
+                    category2=values[n - 1]['domain_category'],
                 )
 
         #print("Bi---[OK]--- %s seconds ---" % (time.time() - start_time))

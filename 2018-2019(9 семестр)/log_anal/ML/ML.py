@@ -4,12 +4,9 @@ import pandas as pd
 import time
 
 from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
 
 from analyse.models import ML
+from base.constants import classification_algorithms
 
 def classification(path, names, algorithms, info):
 
@@ -45,15 +42,10 @@ def classification(path, names, algorithms, info):
     print(n_login_attempt)
 
     # несколько алгоритмов МО
-    ml_alg = {
-        'rf': RandomForestClassifier(),
-        'lg': LogisticRegression(),
-        'SVC': SVC()
-    }
     ml = {}
-    for alg in ml_alg:
-        if alg in algorithms:
-            ml[alg] = ml_alg[alg]
+    for key, value in classification_algorithms.items():
+        if key in algorithms:
+            ml[key] = value
 
     with open(path + "\\otch.txt", 'w') as f:
         f.write(str(names) + " " + str(n))

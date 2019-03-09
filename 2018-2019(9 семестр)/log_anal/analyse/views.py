@@ -15,6 +15,7 @@ from analyse.models import Bigrams, Log, Trigrams, Domains, Users
 from base.new_analyse import base_analyse
 from base.filling_the_database import filling
 from base.base import train_and_test
+from base.constants import classification_algorithms, patterns, clicks
 
 def get_selection(request, full_array):
     find_array = []
@@ -66,9 +67,12 @@ class UsersView(View):
         context = {'log_names_list': result, 'teams': []}
 
         context['teams'].append({'t': 'team', 'u': 'user', 'url': 'urls', 'dom': 'domains', 'url_bi': 'url_bi',
-                                 'dom_bi': 'dom_bi', 'url_tri': 'url_tri', 'dom_tri': 'dom_tri'})
+                                 'dom_bi': 'dom_bi', 'url_tri': 'url_tri', 'dom_tri': 'dom_tri',
+                                 't_bi': 't_bi', 't_tri': 't_tri', 'c_bi': 'c_bi', 'c_tri': 'c_tri',})
         date = Users.objects.values()
+
         for i in date:
+            print(i['frequent_bi_urls'])
             context['teams'].append({
                 't': i['team'],
                 'u': i['username'],
@@ -76,8 +80,12 @@ class UsersView(View):
                 'dom': len(i['frequent_domains']),
                 'url_bi': len(i['frequent_bi_urls']),
                 'dom_bi': len(i['frequent_bi_domains']),
+                't_bi': len(i['frequent_bi_domains_type']),
+                'c_bi': len(i['frequent_bi_domains_categories']),
                 'url_tri': len(i['frequent_tri_urls']),
-                'dom_tri': len(i['frequent_tri_domains'])
+                'dom_tri': len(i['frequent_tri_domains']),
+                't_tri': len(i['frequent_tri_domains_type']),
+                'c_tri': len(i['frequent_tri_domains_categories']),
             })
 
         return render(request, 'analyse/users.html', context)
@@ -161,16 +169,14 @@ class MLView(View):
     параметров.
     """
     teams = [str(team[0]) for team in Users.objects.distinct('team').values_list('team')]
-    clicks = ['5', '15', '30']
-    patterns = ['domain', 'dom_bi', 'dom_tri', 'domain_maps', 'url_maps', 'grams_pause', 'url_bi', 'url_tri']
-    algorithms = ['rf', 'lg', 'SVC']
+    algorithms = [name for name in classification_algorithms]
     action = ['train', 'ML']
 
     def get(self, request, *args, **kwargs):
         data = {
             'teams': self.teams,
-            'clicks': self.clicks,
-            'patterns': self.patterns,
+            'clicks': clicks,
+            'patterns': patterns,
             'algorithms': self.algorithms,
             'action': self.action,
         }
@@ -178,8 +184,8 @@ class MLView(View):
 
     def post(self, request):
         selected_teams = [int(i) for i in get_selection(request, self.teams)]
-        selected_clicks = [int(i) for i in get_selection(request, self.clicks)]
-        selected_patterns = get_selection(request, self.patterns)
+        selected_clicks = [int(i) for i in get_selection(request, clicks)]
+        selected_patterns = get_selection(request, patterns)
         selected_algorithms = get_selection(request, self.algorithms)
         selected_action = get_selection(request, self.action)
         print(selected_teams)
