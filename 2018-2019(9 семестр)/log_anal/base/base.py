@@ -4,7 +4,7 @@
 import os
 import time
 
-from analyse.models import Users
+from analyse.models import Teams
 from ML.create_vectors_in_two_files import CreateVectorsApart
 from ML.ML import classification
 
@@ -23,10 +23,10 @@ def train_and_test(clicks, day_parts, list_permission, teams, algorithms=None, a
     for team in teams:
         for day_part in day_parts:
             for n_click in clicks:
-                thousand = Users.objects.filter(team=team).values_list('thousand')[0][0]
+                thousand = Teams.objects.filter(team=team).values_list('thousand')[0][0]
                 path = create_dirname(str(".\\dataset2\\") + str(team) + " perm " + str(list_permission) + " " + \
                                       str(day_part) + "t " + str(n_click) + "cl " + str(thousand) + add_info_by_namedir)
-                names = [name[0] for name in Users.objects.filter(team=team).values_list('username')]
+                names = [name[0] for name in Teams.objects.filter(team=team).values_list('username')]
                 if "train" in action:
                     data = (thousand, int(thousand/0.7))
                     CreateVectorsApart(path, data, names, n_click, day_part, list_permission, team)

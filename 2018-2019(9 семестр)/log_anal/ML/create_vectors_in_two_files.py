@@ -7,7 +7,7 @@ import requests
 import xlsxwriter
 import vk_api
 
-from analyse.models import Log, Users
+from analyse.models import Log, Teams
 
 WIDTH = 7
 HEIGHT = 5
@@ -104,7 +104,7 @@ class CreateVectorsApart(object):
                 print('user ' + i + ' success writing testing data')
 
     def up_data_from_db(self, name):
-        log = Users.objects.filter(team=self.team_name).get(username=name)
+        log = Teams.objects.filter(team=self.team_name).get(username=name)
 
         # частые объекты всех пользователей без повторений
         self.urls = list(set(self.urls + log.frequent_urls))
@@ -154,6 +154,8 @@ class CreateVectorsApart(object):
         print(size)
 
         num = 0
+        all_types = [i[0] for i in Log.objects.distinct('domain_type').values_list('domain_type')]
+        all_categories = [i[0] for i in Log.objects.distinct('domain_category').values_list('domain_category')]
         for ind in range(0, size - self.n_click, self.n_click):
             num += 1
             res = {}
@@ -257,8 +259,6 @@ class CreateVectorsApart(object):
                             print(domain_repeat_pause[i])
                             cc = input()
 
-
-
             if 'domain_maps' in self.permission:
                 i = 0
                 for map in domains_map:
@@ -358,6 +358,12 @@ class CreateVectorsApart(object):
                 for i in range(len(dom_tri)):
                     res['dom_tri_pause' + str(i)] = self.pause(dom_tri_pauses[i])
 
+            if 'domain_type' in self.permission:
+                res.update(self.get_info('domain_type', all_types,values))
+            if 'domain_category' in self.permission:
+                res.update(self.get_info('domain_category', all_categories, values))
+
+
             res_by_file.update(res)
             result_by_file.append(res_by_file)
             if num >= 1000:
@@ -366,6 +372,14 @@ class CreateVectorsApart(object):
                 result_by_file = []
         if result_by_file:
             self.write_in_csv(path, result_by_file)
+
+    def get_info(self, type_perm, all_type_objs, values):
+        res = {}
+        for i in range(len(all_type_objs)):
+            res[type_perm + str(i)] = 0
+        for i in values:
+            res[type_perm + str(all_type_objs.index(i[type_perm]))] += 1
+        return res
 
     def pause(self, mass):
         """

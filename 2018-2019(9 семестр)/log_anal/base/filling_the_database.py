@@ -6,10 +6,14 @@ from pytz import timezone
 import time
 import re
 
-from analyse.models import Bigrams, Log, Trigrams, Domains
+from analyse.models import Bigrams, Log, Trigrams, Domains, URLs, Clicks
 
 def filling():
     start_time = time.time()
+    #Clicks.objects.all().delete()
+    Bigrams.objects.all().delete()
+    #Log.objects.all().delete()
+    Trigrams.objects.all().delete()
     log_names = [f.split('.')[0] for f in listdir('logs') if isfile(join('logs', f))]
     for name in log_names:
         Filling(name)
@@ -21,9 +25,19 @@ class Filling(object):
     def __init__(self, name):
         self.name = name
         self.start_time = None
+
         self.filling_bd()
         #self.filling_categories()
         self.filling_bigram_table()
+
+    def check_obj(self, model, obj_type, obj_name):
+        d = {obj_type: obj_name}
+        try:
+            obj = model.objects.get(**d)
+        except:
+            obj = model.objects.create(**d)
+            obj.save()
+        return obj
 
     def filling_bd(self):
 
@@ -81,24 +95,31 @@ class Filling(object):
                 if num_in_thousand >= 1000:
                     num_in_thousand = 0
                     thousand += 1
-                query = Domains.objects.get(domain=domain)
+
+                domain_obj = self.check_obj(Domains, 'domain', domain)
+                url_obj = self.check_obj(URLs, 'url', url)
+                click = Clicks.objects.create(
+                    time=time1,
+                    url=url_obj,
+                    domain=domain_obj,
+                )
+                click.save()
+
                 p = Log(
                     day=day,
-                    time=time1,
                     local_time=local_time,
-                    username=self.name,
+                    click=click,
+
                     x_cursor_coordinates=x_cur,
                     y_cursor_coordinates=y_cur,
                     x1_window_coordinates=x1_w,
                     y1_window_coordinates=y1_w,
                     x2_window_coordinates=x2_w,
                     y2_window_coordinates=y2_w,
-                    url=url,
-                    domain=domain,
+
                     seance=seance,
                     thousand=thousand,
-                    domain_type=query.type,
-                    domain_category=query.category,
+                    username=self.name,
                 )
                 p.save()
                 last_active_time = time1
@@ -106,9 +127,7 @@ class Filling(object):
                 pass
             except Exception as e:
                 raise e
-                #print(e)
-                #print(line)
-        #print("Log--[OK]--- %s seconds ---" % (time.time() - start_time))
+
 
     # def filling_categories(self):
     #     urls = Log.objects.values('url').distinct()
@@ -134,69 +153,32 @@ class Filling(object):
     #                 category=category,
     #             )
 
-
     def filling_bigram_table(self):
-        start_time = time.time()
         log = Log.objects.filter(username=self.name).filter(start_computer=False)
         start = log.earliest('seance').seance
         end = log.latest('seance').seance
         for i in range(start, end+1):
-            values = log.filter(seance=i).order_by('id').values('time', 'url', 'domain')
+            values = log.filter(seance=i).order_by('id')
             n = len(values)
             if n > 1:
                 for j in range(n-3):
                     Bigrams.objects.create(
                         seance=i,
-                        username = self.name,
-                        time1=values[j]['time'],
-                        url1=values[j]['url'],
-                        domain1=values[j]['domain'],
-                        type1=values[j]['domain_type'],
-                        category1=values[j]['domain_category'],
-                        time2=values[j + 1]['time'],
-                        url2=values[j + 1]['url'],
-                        domain2=values[j + 1]['domain'],
-                        type2=values[j + 1]['domain_type'],
-                        category2=values[j + 1]['domain_category'],
+                        username=self.name,
+                        click1=values[j].click,
+                        click2=values[j + 1].click,
                         )
-                    if values[j]['url'] != values[j + 1]['url'] or values[j + 2]['url'] != values[j + 1]['url']:
+                    if values[j].click.url != values[j + 1].click.url or values[j + 2].click.url != values[j + 1].click.url:
                         Trigrams.objects.create(
                             seance=i,
                             username=self.name,
-                            time1=values[j]['time'],
-                            url1=values[j]['url'],
-                            domain1=values[j]['domain'],
-                            type1=values[j]['domain_type'],
-                            category1=values[j]['domain_category'],
-                            time2=values[j + 1]['time'],
-                            url2=values[j + 1]['url'],
-                            domain2=values[j + 1]['domain'],
-                            type2=values[j + 1]['domain_type'],
-                            category2=values[j + 1]['domain_category'],
-                            time3=values[j + 2]['time'],
-                            url3=values[j + 2]['url'],
-                            domain3=values[j + 2]['domain'],
-                            type3=values[j + 2]['domain_type'],
-                            category3=values[j + 2]['domain_category'],
+                            click1=values[j].click,
+                            click2=values[j + 1].click,
+                            click3=values[j + 2].click,
                         )
                 Bigrams.objects.create(
                     seance=i,
                     username=self.name,
-                    time1=values[n - 2]['time'],
-                    url1=values[n - 2]['url'],
-                    domain1=values[n - 2]['domain'],
-                    type1=values[n - 2]['domain_type'],
-                    category1=values[n - 2]['domain_category'],
-                    time2=values[n - 1]['time'],
-                    url2=values[n - 1]['url'],
-                    domain2=values[n - 1]['domain'],
-                    type2=values[n - 1]['domain_type'],
-                    category2=values[n - 1]['domain_category'],
+                    click1=values[n - 2].click,
+                    click2=values[n - 1].click,
                 )
-
-        #print("Bi---[OK]--- %s seconds ---" % (time.time() - start_time))
-
-
-
-
-

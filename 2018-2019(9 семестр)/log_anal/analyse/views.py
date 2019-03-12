@@ -11,7 +11,7 @@ from django.shortcuts import render
 from django.views import generic
 from django.views.generic.base import View
 
-from analyse.models import Bigrams, Log, Trigrams, Domains, Users
+from analyse.models import Bigrams, Log, Trigrams, Teams, Clicks, Domains, URLs
 from base.new_analyse import base_analyse
 from base.filling_the_database import filling
 from base.base import train_and_test
@@ -46,7 +46,7 @@ class UsersView(View):
         names = []
         log_names = [f.split('.')[0] for f in listdir('logs') if isfile(join('logs', f))]
         base_usernames = [name[0] for name in Log.objects.all().distinct('username').values_list("username")]
-        analyse_usernames = [name[0] for name in Users.objects.all().values_list("username")]
+        analyse_usernames = [name[0] for name in Teams.objects.all().values_list("username")]
 
         names = list(set(log_names + analyse_usernames + base_usernames))
 
@@ -69,10 +69,9 @@ class UsersView(View):
         context['teams'].append({'t': 'team', 'u': 'user', 'url': 'urls', 'dom': 'domains', 'url_bi': 'url_bi',
                                  'dom_bi': 'dom_bi', 'url_tri': 'url_tri', 'dom_tri': 'dom_tri',
                                  't_bi': 't_bi', 't_tri': 't_tri', 'c_bi': 'c_bi', 'c_tri': 'c_tri',})
-        date = Users.objects.values()
+        date = Teams.objects.values()
 
         for i in date:
-            print(i['frequent_bi_urls'])
             context['teams'].append({
                 't': i['team'],
                 'u': i['username'],
@@ -91,10 +90,6 @@ class UsersView(View):
         return render(request, 'analyse/users.html', context)
 
     def post(self, dop_info=None):
-        Bigrams.objects.all().delete()
-        Log.objects.all().delete()
-        Trigrams.objects.all().delete()
-
         t = threading.Thread(target=filling)
         t.start()
         return HttpResponse("success")
@@ -116,6 +111,8 @@ class BaseView(View):
         Вывод общей информации о всех таблицах
         """
         result = []
+        result.append({'name': 'URLs', 'count': URLs.objects.all().count()})
+        result.append({'name': 'Domains', 'count': Domains.objects.all().count()})
         result.append({'name': 'logs', 'count': Log.objects.all().count()})
         result.append({'name': 'bigramms', 'count': Bigrams.objects.all().count()})
         result.append({'name': 'trigramms', 'count': Trigrams.objects.all().count()})
@@ -133,17 +130,17 @@ class AnalyseView(View):
         data = {'users': self.names, 'users_table': [column_names], 'teams_table': []}
         for name in self.names:
             log = Log.objects.filter(username=name)
-            start_time = log.earliest('time').time
+            start_time = log.earliest('click__time').click.time
             data['users_table'].append({
                 'name': name,
                 'all': log.count(),
-                '1': log.filter(time__lte= start_time + timedelta(days=7)).count(),
-                '2': log.filter(time__lte=start_time + timedelta(days=14)).count(),
-                '3': log.filter(time__lte=start_time + timedelta(days=21)).count(),
+                '1': log.filter(click__time__lte= start_time + timedelta(days=7)).count(),
+                '2': log.filter(click__time__lte=start_time + timedelta(days=14)).count(),
+                '3': log.filter(click__time__lte=start_time + timedelta(days=21)).count(),
             })
 
         data['teams_table'].append({'team': 'team', 'user': 'user', 'thousand': 'thousand'})
-        u_data = Users.objects.values('team', 'username', 'thousand')
+        u_data = Teams.objects.values('team', 'username', 'thousand')
         for i in u_data:
             data['teams_table'].append({'team': i['team'], 'user': i['username'], 'thousand': i['thousand']})
 
@@ -154,8 +151,8 @@ class AnalyseView(View):
         Для каждого пользователя находит частые url и другие признаки. В результате заполняется таблица Users.
         """
         team = int(request.POST["team"])
-        if Users.objects.filter(team=team):
-            Users.objects.filter(team=team).delete()
+        if Teams.objects.filter(team=team):
+            Teams.objects.filter(team=team).delete()
         clicks_thousand = int(request.POST["clicks"])
         users = get_selection(request, self.names)
         t = threading.Thread(target=base_analyse, args=(team, clicks_thousand, users,))
@@ -168,7 +165,7 @@ class MLView(View):
     Запуск процесса формирования обучающих выборок или машинного обучения. В get запросе выводится менюшка для задания
     параметров.
     """
-    teams = [str(team[0]) for team in Users.objects.distinct('team').values_list('team')]
+    teams = []#[str(team[0]) for team in Teams.objects.distinct('team').values_list('team')]
     algorithms = [name for name in classification_algorithms]
     action = ['train', 'ML']
 

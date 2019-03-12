@@ -22,20 +22,20 @@ class Analyst(object):
     # последовательный анализ лога по пуктам
     def activity_analyse(self):
         # частые объекты
-        all_urls = [url[0] for url in self.log.values_list('url').distinct()]
+        all_urls = [url[0] for url in self.log.values_list('click__url').distinct()]
         self.result['частые url'] = self._get_frequent_objects_list(all_urls, 'url', NUMBER_FREQUENT_URL)
-        all_domains = [domain[0] for domain in self.log.values_list('domain').distinct()]
+        all_domains = [domain[0] for domain in self.log.values_list('click__domain').distinct()]
         self.result['частые домены'] = self._get_frequent_objects_list(all_domains, 'domain', NUMBER_FREQUENT_DOMAINS)
 
         # n-граммы
-        self.result['url биграммы'] = self._bigramm('url1', 'url2')
-        self.result['domain биграммы'] = self._bigramm('domain1', 'domain2')
-        self.result['type биграммы'] = self._bigramm('type1', 'type2')
-        self.result['category биграммы'] = self._bigramm('category1', 'category2')
-        self.result['url триграммы'] = self._trigramm('url1', 'url2', 'url3')
-        self.result['domain триграммы'] = self._trigramm('domain1', 'domain2', 'domain3')
-        self.result['type триграммы'] = self._trigramm('type1', 'type2', 'type3')
-        self.result['category триграммы'] = self._trigramm('category1', 'category2', 'category3')
+        self.result['url биграммы'] = self._bigramm('url', 'url')
+        self.result['domain биграммы'] = self._bigramm('domain', 'domain')
+        self.result['type биграммы'] = self._bigramm('domain__type', 'domain__type')
+        self.result['category биграммы'] = self._bigramm('domain__category', 'domain__category')
+        self.result['url триграммы'] = self._trigramm('url', 'url', 'url')
+        self.result['domain триграммы'] = self._trigramm('domain', 'domain', 'domain')
+        self.result['type триграммы'] = self._trigramm('domain__type', 'domain__type', 'domain__type')
+        self.result['category триграммы'] = self._trigramm('domain__category', 'domain__category', 'domain__category')
 
     # Пункт 0: самые общие данные о логе
     def start_treatment(self):
@@ -51,6 +51,7 @@ class Analyst(object):
 
     # возвращает массив частых объектов
     def _get_frequent_objects_list(self, obj_list, obj_type, numbers):
+        obj_type = "click__" + obj_type
         mass = []
         objects = {}
         for object in obj_list:
@@ -77,6 +78,8 @@ class Analyst(object):
         return r1
 
     def _bigramm(self, column1, column2):
+        column1 = 'click1__' + column1
+        column2 = 'click2__' + column2
         bi_gramms = {}
         a = self.bi.only(column1, column2).exclude(**{column1: F(column2)}).distinct(column1, column2).values_list(column1, column2)
         mass = []
@@ -101,6 +104,7 @@ class Analyst(object):
         return result_bi_gramms
 
     def _trigramm(self, col1, col2, col3):
+        col1, col2, col3 = 'click1__' + col1, 'click2__' + col2,'click3__' + col3
         th_gramms = {}
         a = self.tri.only(col1, col2, col3).distinct(col1, col2, col3).values_list(col1, col2, col3)
         mass = []
