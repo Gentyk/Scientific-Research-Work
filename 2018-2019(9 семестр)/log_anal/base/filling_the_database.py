@@ -2,7 +2,6 @@
 from datetime import datetime as dd
 from os import listdir
 from os.path import isfile, join
-from pytz import timezone
 import time
 import re
 

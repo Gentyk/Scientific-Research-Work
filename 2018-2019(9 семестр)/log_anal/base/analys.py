@@ -22,18 +22,18 @@ class Analyst(object):
     # последовательный анализ лога по пуктам
     def activity_analyse(self):
         # частые объекты
-        all_urls = [url[0] for url in self.log.values_list('click__url').distinct()]
-        self.result['частые url'] = self._get_frequent_objects_list(all_urls, 'url', NUMBER_FREQUENT_URL)
-        all_domains = [domain[0] for domain in self.log.values_list('click__domain').distinct()]
-        self.result['частые домены'] = self._get_frequent_objects_list(all_domains, 'domain', NUMBER_FREQUENT_DOMAINS)
+        all_urls = [url[0] for url in self.log.values_list('click__url__url').distinct()]
+        self.result['частые url'] = self._get_frequent_objects_list(all_urls, 'url__url', NUMBER_FREQUENT_URL)
+        all_domains = [domain[0] for domain in self.log.values_list('click__domain__domain').distinct()]
+        self.result['частые домены'] = self._get_frequent_objects_list(all_domains, 'domain__domain', NUMBER_FREQUENT_DOMAINS)
 
         # n-граммы
-        self.result['url биграммы'] = self._bigramm('url', 'url')
-        self.result['domain биграммы'] = self._bigramm('domain', 'domain')
+        self.result['url биграммы'] = self._bigramm('url__url', 'url__url')
+        self.result['domain биграммы'] = self._bigramm('domain__domain', 'domain__domain')
         self.result['type биграммы'] = self._bigramm('domain__type', 'domain__type')
         self.result['category биграммы'] = self._bigramm('domain__category', 'domain__category')
-        self.result['url триграммы'] = self._trigramm('url', 'url', 'url')
-        self.result['domain триграммы'] = self._trigramm('domain', 'domain', 'domain')
+        self.result['url триграммы'] = self._trigramm('url__url', 'url__url', 'url__url')
+        self.result['domain триграммы'] = self._trigramm('domain__domain', 'domain__domain', 'domain__domain')
         self.result['type триграммы'] = self._trigramm('domain__type', 'domain__type', 'domain__type')
         self.result['category триграммы'] = self._trigramm('domain__category', 'domain__category', 'domain__category')
 

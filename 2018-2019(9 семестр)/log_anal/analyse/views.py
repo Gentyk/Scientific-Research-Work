@@ -11,11 +11,11 @@ from django.shortcuts import render
 from django.views import generic
 from django.views.generic.base import View
 
-from analyse.models import Bigrams, Log, Trigrams, Teams, Clicks, Domains, URLs
+from analyse.models import Bigrams, Log, Trigrams, Teams, Clicks, Domains, URLs, VectorsOneVersion
 from base.new_analyse import base_analyse
 from base.filling_the_database import filling
-from base.base import train_and_test
-from base.constants import classification_algorithms, patterns, clicks
+from base.base import create_vectors
+from base.constants import classification_algorithms, patterns, clicks, number_parts_per_day
 
 def get_selection(request, full_array):
     find_array = []
@@ -160,12 +160,12 @@ class AnalyseView(View):
         return HttpResponse("success")
 
 
-class MLView(View):
+class TrainView(View):
     """
     Запуск процесса формирования обучающих выборок или машинного обучения. В get запросе выводится менюшка для задания
     параметров.
     """
-    teams = []#[str(team[0]) for team in Teams.objects.distinct('team').values_list('team')]
+    teams = [str(team[0]) for team in Teams.objects.distinct('team').values_list('team')]
     algorithms = [name for name in classification_algorithms]
     action = ['train', 'ML']
 
@@ -173,27 +173,63 @@ class MLView(View):
         data = {
             'teams': self.teams,
             'clicks': clicks,
-            'patterns': patterns,
-            'algorithms': self.algorithms,
-            'action': self.action,
+            #'patterns': patterns,
+            'day_parts': number_parts_per_day,
         }
-        return render(request, 'analyse/ML_run.html', data)
+        return render(request, 'analyse/train.html', data)
 
     def post(self, request):
         selected_teams = [int(i) for i in get_selection(request, self.teams)]
         selected_clicks = [int(i) for i in get_selection(request, clicks)]
-        selected_patterns = get_selection(request, patterns)
-        selected_algorithms = get_selection(request, self.algorithms)
-        selected_action = get_selection(request, self.action)
-        print(selected_teams)
-        print(selected_clicks)
-        print(selected_patterns)
-        print(selected_algorithms)
-        print(selected_action)
-        t = threading.Thread(target=train_and_test, args=(selected_clicks, [8], selected_patterns, selected_teams,
-                                                          selected_algorithms, "", selected_action,))
+        selected_day_parts = [int(i) for i in get_selection(request, number_parts_per_day)]
+
+        t = threading.Thread(target=create_vectors, args=(selected_clicks, selected_day_parts, selected_teams))
         t.start()
         return HttpResponse("success")
+
+
+class VectorsView(View):
+    def get(self, request, *args, **kwargs):
+        names = [d[0] for d in VectorsOneVersion.objects.filter(type=1).distinct('username').values_list('username')]
+
+        data = []
+        line = {0: 'pattern'}
+        print(names)
+        for i in range(len(names)):
+            line[i+1] = names[i]
+
+        data.append(line.copy())
+
+        for pattern in patterns:
+            if pattern.find('map') != -1:
+                continue
+
+            x = VectorsOneVersion.objects.values_list(pattern)[0][0]
+            if isinstance(x, list):
+                j = 0
+                n = len(x.copy())
+                x = {name1: [i[0] for i in VectorsOneVersion.objects.filter(username=name1, type=1).values_list(pattern)] for name1 in names}
+                for i in range(n):
+                    text = str(pattern) + str(j)
+                    line = {0: text}
+                    for j, name in enumerate(names):
+                        mass = [lin[i] for lin in x[name]]
+                        line[j+1] = sum(mass)
+                    data.append(line.copy())
+            else:
+                line = {0: pattern}
+                for j, name1 in enumerate(names):
+                    x = [i[0] for i in VectorsOneVersion.objects.filter(username=name1, type=1).values_list(pattern)]
+                    line[j+1] = sum(x)
+                data.append(line.copy())
+
+
+        data = {
+            'data': data
+        }
+
+        return render(request, 'analyse/vectors_table.html', data)
+
 
 
 

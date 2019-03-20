@@ -91,7 +91,47 @@ class Teams(models.Model):
     frequent_tri_domains_type = ArrayField(ArrayField(models.TextField(default="")), default=list)
     frequent_tri_domains_categories = ArrayField(ArrayField(models.TextField(default="")), default=list)
 
-    thousand = models.IntegerField(db_index=True, default=0)    # номер тысячи
+    thousand = models.IntegerField(db_index=True, default=0)    # количество тысяч кликов, использованных для анализа
+
+class VectorsOneVersion(models.Model):
+    """
+    Вектора со всеми признаками. Впоследствии мы будем брать только часть этих признаков
+    """
+    team = models.IntegerField(db_index=True)
+    thousand = models.IntegerField(db_index=True, default=0)  # количество тысяч кликов, использованных для обучения
+    username = models.CharField(db_index=True, default="I", max_length=50)
+    number_parts_per_day = models.IntegerField(default=0)   # на сколько частей разделены сутки
+    clicks = models.IntegerField(default=0) # количество кликов в одном векторе
+    type = models.IntegerField(db_index=True, default=0)  # флаг, который говорит - обучающий вектор, или нет
+
+    """
+    Далее перечисляются признаки
+    """
+    days = ArrayField(models.IntegerField(default=0))   # активность по дням недели
+    day_parts = ArrayField(models.IntegerField(default=0))  # активность по времени суток
+    middle_pause = models.FloatField(default=0) # средняя пауза, среди пауз менее 5 мин
+    start_comp_pause = models.FloatField(default=0)
+
+    urls = ArrayField(models.IntegerField(default=0)) # количество переходов на частые url
+    url_freq_pause = ArrayField(models.FloatField(default=0))
+    url_maps = ArrayField(ArrayField(models.IntegerField(default=0)))
+
+    domains = ArrayField(models.IntegerField(default=0))
+    dom_freq_pause = ArrayField(models.FloatField(default=0))
+    domain_maps = ArrayField(ArrayField(models.IntegerField(default=0)))
+
+    url_bi = ArrayField(models.IntegerField(default=0))
+    url_bi_pauses = ArrayField(models.FloatField(default=0))
+    dom_bi = ArrayField(models.IntegerField(default=0))
+    dom_bi_pauses = ArrayField(models.FloatField(default=0))
+    url_tri = ArrayField(models.IntegerField(default=0))
+    url_tri_pauses = ArrayField(models.FloatField(default=0))
+    dom_tri = ArrayField(models.IntegerField(default=0))
+    dom_tri_pauses = ArrayField(models.FloatField(default=0))
+
+    domain_type = ArrayField(models.IntegerField(default=0))
+    domain_categories = ArrayField(models.IntegerField(default=0))
+
 
 class ML(models.Model):
     team = models.IntegerField(db_index=True)
