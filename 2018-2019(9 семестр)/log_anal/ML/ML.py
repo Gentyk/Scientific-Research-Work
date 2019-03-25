@@ -5,32 +5,30 @@ import time
 
 from sklearn.preprocessing import StandardScaler
 
-from analyse.models import ML
+from analyse.models import ML, VectorsOneVersion
 from base.constants import classification_algorithms
 
-def classification(path, names, algorithms, info):
+def classification(path, names, pattern_list, algorithms, info):
 
     # данные для обучения
-    with open(path + '\\TRAINING.csv', 'r') as f:
-        reader = csv.reader(f, delimiter=',')
-        n = len(next(reader))
-    time.sleep(1)
-    df = pd.read_csv(path + '\\TRAINING.csv', engine='python')
-    df.columns = ['Y'] + ['X' + str(i) for i in range(n - 1)]
-    df.head()
-    X = df.values[:, 1:]
-    Y = df.values[:, 0]
+    patterns = pattern_list
+    patterns.append('username')
+    fil = info.copy()
+    fil['type'] = 1
+    X, Y = get_arrays(fil, patterns)
+    n = len(Y)
+
     # нормализация
     scaler = StandardScaler()
     scaler.fit(X)
     X = scaler.transform(X)
 
     # данные для тестирования
-    df1 = pd.read_csv(path + '\\TESTING.csv', engine='python')
-    df1.columns = ['Y'] + ['X' + str(i) for i in range(n - 1)]
-    df1.head()
-    test_X = df1.values[:, 1:]
-    test_Y = df1.values[:, 0]
+    fil = info.copy()
+    fil['type'] = 2
+    mass = VectorsOneVersion.objects.filter(**fil).values_list(*patterns)
+    test_X, test_Y = get_arrays(fil, patterns)
+
     n_test = len(test_Y)
     test_X = scaler.transform(test_X)
 
@@ -88,8 +86,30 @@ def classification(path, names, algorithms, info):
                 team = info['team'],
                 clicks = info['clicks'],
                 num_users = len(names),
-                patterns = info['patterns'],
+                patterns = pattern_list,
                 middleFAR = middleFAR,
                 middleFRR = middleFRR,
                 accuracy = accuracy,
             )
+
+def get_arrays(criterion, patterns):
+    mass = VectorsOneVersion.objects.filter(**criterion).values_list(*patterns)
+    X = []
+    Y = []
+    for line in mass:
+        l_X = []
+        for obj in line[:len(line)-1]:
+            if isinstance(obj, list):
+                # для карты кликов
+                if isinstance(obj[0], list):
+                    for j in obj:
+                        l_X.extend(j)
+                else:
+                    l_X.extend(obj)
+            else:
+                l_X.append(obj)
+        Y.append(line[-1])
+        X.append(l_X.copy())
+    X = np.array(X)
+    Y = np.array(Y)
+    return X, Y

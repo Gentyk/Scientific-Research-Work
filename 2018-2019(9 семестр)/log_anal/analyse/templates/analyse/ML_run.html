@@ -2,16 +2,16 @@
   <style type="text/css">
    #teams, #clicks, #patterns, #algoritms, #action { position: absolute; }
    #teams {
-    left: 0px;
+    left: 400px;
    }
    #clicks {
     left: 100px;
    }
    #patterns {
-    left: 200px;
+    left: 0px;
    }
    #algoritms {
-    left: 400px;
+    left: 200px;
    }
    #action {
     left: 550px;
@@ -24,22 +24,11 @@
     <dif class="container" style="..." >
          <form action="{% url 'ML' %}" method="post">
             {% csrf_token %}
-
-             <!-- Выбор команды и ввод префикса к папке -->
+			<!-- Выбор коллекции -->
              <div id="teams">
-                <p>select team:</p>
-                {% for name in teams %}
-                <p><input type="checkbox" name={{name}} value="+">{{ name }}</p>
-                {% endfor %}
-
-
-             </div>
-
-             <!-- Выбор количества кликов -->
-             <div id="clicks">
-                <p>select clicks:</p>
-                {% for num in clicks %}
-                <p><input type="checkbox" name={{num}} value="+">{{ num }}</p>
+                <p>select [команда, тысячи, частей дня, колво кликов в векторе]:</p>
+                {% for c in collections %}
+                <p><input type="checkbox" name={{c}} value="+">{{ c }}</p>
                 {% endfor %}
              </div>
 
@@ -61,12 +50,6 @@
 
              <!-- Выбор типа действия -->
              <div id="action">
-                 <p>What do you want?</p>
-                 {% for i in action %}
-                <p><input type="checkbox" name={{i}} value="+">{{ i }}</p>
-                {% endfor %}
-                 <p>please, input info:</p>
-                 <p><input type="text" name="prefix" class="form-control" placeholder="prefix by folder"></p>
                  <input type="submit" value="Do">
              </div>
       </form>

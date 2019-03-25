@@ -78,7 +78,7 @@ class CreateVectorsDB(object):
 
     def create_vectors(self, name, type):
         size = 0
-        log = Log.objects.filter(username=name).filter(start_computer=False)
+        log = Log.objects.filter(username=name)
         if type == 1:
             # обучение
             all_v = log.filter(thousand__lt=self.training)
@@ -250,6 +250,7 @@ class CreateVectorsDB(object):
 
             new = VectorsOneVersion.objects.create(**res)
             new.save()
+        #print(num)
 
     def get_info(self, field_name, type_perm, all_type_objs, values):
         res = {field_name: []}

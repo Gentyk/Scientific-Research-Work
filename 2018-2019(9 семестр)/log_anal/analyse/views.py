@@ -14,7 +14,7 @@ from django.views.generic.base import View
 from analyse.models import Bigrams, Log, Trigrams, Teams, Clicks, Domains, URLs, VectorsOneVersion
 from base.new_analyse import base_analyse
 from base.filling_the_database import filling
-from base.base import create_vectors
+from base.base import create_vectors, train
 from base.constants import classification_algorithms, patterns, clicks, number_parts_per_day
 
 def get_selection(request, full_array):
@@ -119,6 +119,7 @@ class BaseView(View):
         context = {'tables_list': result}
         return render(request, 'analyse/base_status.html', context)
 
+
 class AnalyseView(View):
     """
     Запускает анализ для пользователей, данные которых есть в основных таблицах (Log, Bigramm, Trigramm)
@@ -160,20 +161,19 @@ class AnalyseView(View):
         return HttpResponse("success")
 
 
-class TrainView(View):
+class VectorsView(View):
     """
     Запуск процесса формирования обучающих выборок или машинного обучения. В get запросе выводится менюшка для задания
     параметров.
     """
     teams = [str(team[0]) for team in Teams.objects.distinct('team').values_list('team')]
-    algorithms = [name for name in classification_algorithms]
-    action = ['train', 'ML']
 
     def get(self, request, *args, **kwargs):
+        self.teams = [str(team[0]) for team in Teams.objects.distinct('team').values_list('team')]
+
         data = {
             'teams': self.teams,
             'clicks': clicks,
-            #'patterns': patterns,
             'day_parts': number_parts_per_day,
         }
         return render(request, 'analyse/train.html', data)
@@ -182,52 +182,45 @@ class TrainView(View):
         selected_teams = [int(i) for i in get_selection(request, self.teams)]
         selected_clicks = [int(i) for i in get_selection(request, clicks)]
         selected_day_parts = [int(i) for i in get_selection(request, number_parts_per_day)]
-
         t = threading.Thread(target=create_vectors, args=(selected_clicks, selected_day_parts, selected_teams))
         t.start()
         return HttpResponse("success")
 
 
-class VectorsView(View):
+class MLView(View):
+    collections = ['|'.join([str(i) for i in team]) for team in
+                   VectorsOneVersion.objects.distinct('team', 'thousand', 'number_parts_per_day', 'clicks').
+                   values_list('team', 'thousand', 'number_parts_per_day', 'clicks')]
+
     def get(self, request, *args, **kwargs):
-        names = [d[0] for d in VectorsOneVersion.objects.filter(type=1).distinct('username').values_list('username')]
-
-        data = []
-        line = {0: 'pattern'}
-        print(names)
-        for i in range(len(names)):
-            line[i+1] = names[i]
-
-        data.append(line.copy())
-
-        for pattern in patterns:
-            if pattern.find('map') != -1:
-                continue
-
-            x = VectorsOneVersion.objects.values_list(pattern)[0][0]
-            if isinstance(x, list):
-                j = 0
-                n = len(x.copy())
-                x = {name1: [i[0] for i in VectorsOneVersion.objects.filter(username=name1, type=1).values_list(pattern)] for name1 in names}
-                for i in range(n):
-                    text = str(pattern) + str(j)
-                    line = {0: text}
-                    for j, name in enumerate(names):
-                        mass = [lin[i] for lin in x[name]]
-                        line[j+1] = sum(mass)
-                    data.append(line.copy())
-            else:
-                line = {0: pattern}
-                for j, name1 in enumerate(names):
-                    x = [i[0] for i in VectorsOneVersion.objects.filter(username=name1, type=1).values_list(pattern)]
-                    line[j+1] = sum(x)
-                data.append(line.copy())
-
-
+        self.collections = [ '|'.join([str(i) for i in team]) for team in
+                             VectorsOneVersion.objects.distinct('team', 'thousand', 'number_parts_per_day', 'clicks').
+                             values_list('team', 'thousand', 'number_parts_per_day', 'clicks')]
         data = {
-            'data': data
+            'collections': self.collections,
+            'patterns': patterns,
+            'algorithms': classification_algorithms,
         }
+        return render(request, 'analyse/ML_run.html', data)
 
+    def post(self, request):
+        collections_dict = {'|'.join([str(i) for i in team]): team for team in
+                            VectorsOneVersion.objects.distinct('team', 'thousand', 'number_parts_per_day', 'clicks').
+                            values_list('team', 'thousand', 'number_parts_per_day', 'clicks')}
+        selected_collections = [collections_dict[i] for i in get_selection(request, self.collections)]
+        selected_patterns = [i for i in get_selection(request, patterns)]
+        selected_algorithms = [i for i in get_selection(request, classification_algorithms)]
+        t = threading.Thread(target=train, args=(selected_collections, selected_patterns, selected_algorithms))
+        t.start()
+        return HttpResponse("success")
+
+class MLInfoView(View):
+    def get(self, request, *args, **kwargs):
+        """
+        Выводим таблицу с информацией по точности и ошибкам
+        """
+        data = {'data': [['1','2','3']]
+        }
         return render(request, 'analyse/vectors_table.html', data)
 
 

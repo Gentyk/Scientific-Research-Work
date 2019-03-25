@@ -33,26 +33,25 @@ def create_vectors(clicks, day_parts, teams):
     msg = "Завершено. Время выполнения: %s seconds ---" % (time.time() - start_time)
     print(msg)
 
-def train_and_test(clicks, day_parts, list_permission, teams, algorithms=None, add_info_by_namedir="", action=[]):
+def train(collections, list_permission, algorithms):
     """
     В зависимости от режима запускает или формирование выборок, или запускает МО.
     """
     start_time = time.time()
-    for team in teams:
-        for day_part in day_parts:
-            for n_click in clicks:
-                thousand = Teams.objects.filter(team=team).values_list('thousand')[0][0]
-                path = create_dirname(str(".\\dataset2\\") + str(team) + " perm " + str(list_permission) + " " + \
-                                      str(day_part) + "t " + str(n_click) + "cl " + str(thousand) + add_info_by_namedir)
-                names = [name[0] for name in Teams.objects.filter(team=team).values_list('username')]
-                print("!!!!")
-                if "train" in action:
-                    print("!!!!")
-                    data = (thousand, int(thousand/0.7))
-                    CreateVectorsDB(data, names, n_click, day_part, team)
-                if "ML" in action:
-                    info = {'team': team, 'clicks': n_click, 'patterns': list_permission}
-                    classification(path, names, algorithms, info)
+    for collection in collections:
+        team = collection[0]
+        thousand = collection[1]
+        day_part = collection[2]
+        n_click = collection[3]
+
+        # сюда буду сохранять более подробные отчеты
+        path = create_dirname(str(".\\dataset2\\") + str(team) + " perm " + str(list_permission) + " " + \
+                              str(day_part) + "t " + str(n_click) + "cl " + str(thousand))
+        names = [name[0] for name in VectorsOneVersion.objects.filter(team=team, thousand=thousand, number_parts_per_day=day_part, clicks=n_click).
+            distinct('username').values_list('username')]
+        print("!!!!")
+        info = {'team': team, 'clicks': n_click, 'number_parts_per_day': day_part, 'thousand': thousand}
+        classification(path, names, list_permission, algorithms, info)
     msg = "Завершено. Время выполнения: %s seconds ---" % (time.time() - start_time)
     print(msg)
     #messagebox.showerror("Выполнено", msg)

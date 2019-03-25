@@ -17,7 +17,7 @@
 
 
     <dif class="container" style="..." >
-         <form action="{% url 'ML' %}" method="post">
+         <form action="{% url 'vectors' %}" method="post">
             {% csrf_token %}
 
              <!-- Выбор команды и ввод префикса к папке -->
@@ -39,7 +39,7 @@
              </div>
 
 
-             <!-- Выбор типа действия -->
+             <!-- На сколько разделим день недели -->
              <div id="action">
                  <p>day's parts:</p>
                 {% for i in day_parts %}
