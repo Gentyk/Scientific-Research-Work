@@ -1,0 +1,52 @@
+<head>
+  <style type="text/css">
+   #teams, #clicks, #patterns, #algoritms, #action { position: absolute; }
+   #teams {
+    left: 0px;
+   }
+   #clicks {
+    left: 100px;
+   }
+
+   #action {
+    left: 200px;
+   }
+  </style>
+</head>
+<body>
+
+
+    <dif class="container" style="..." >
+         <form action="{% url 'vectors' %}" method="post">
+            {% csrf_token %}
+
+             <!-- Выбор команды и ввод префикса к папке -->
+             <div id="teams">
+                <p>select team:</p>
+                {% for name in teams %}
+                <p><input type="checkbox" name={{name}} value="+">{{ name }}</p>
+                {% endfor %}
+
+
+             </div>
+
+             <!-- Выбор количества кликов -->
+             <div id="clicks">
+                <p>select clicks:</p>
+                {% for num in clicks %}
+                <p><input type="checkbox" name={{num}} value="+">{{ num }}</p>
+                {% endfor %}
+             </div>
+
+
+             <!-- На сколько разделим день недели -->
+             <div id="action">
+                 <p>day's parts:</p>
+                {% for i in day_parts %}
+                <p><input type="checkbox" name={{i}} value="+">{{ i }}</p>
+                {% endfor %}
+                 <input type="submit" value="Do">
+             </div>
+      </form>
+    </dif>
+</body>
