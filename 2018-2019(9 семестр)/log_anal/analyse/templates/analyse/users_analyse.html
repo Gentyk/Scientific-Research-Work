@@ -1,0 +1,70 @@
+<head>
+  <style type="text/css">
+   body { margin: 0; }
+   #sidebar, #content { position: absolute; }
+   #sidebar, #content { overflow: auto; padding: 10px; }
+   #header {
+    height: 80px; /* Высота слоя */
+    background: #FEDFC0; border-bottom: 2px solid #7B5427;
+   }
+   #header h1 { padding: 20px; margin: 0; }
+      #content {
+    left: 0px;
+   }
+   #sidebar {
+    left: 100px;
+   }
+  </style>
+</head>
+<body>
+
+
+    <dif class="container" style="..." >
+         <form action="{% url 'analyse' %}" method="post">
+            {% csrf_token %}
+            <div class="col-md-4" id="sidebar">
+                 <p>please, input info:</p>
+                 <p><input type="text" name="team" class="form-control" placeholder="team number"></p>
+                 <p><input type="text" name="clicks" class="form-control" placeholder="clicks' number (thousands)"></p>
+            </div>
+             <div id="content">
+                 <p>select users:</p>
+             {% for name in users %}
+                <p><input type="checkbox" name={{name}} value="+">{{ name }}</p>
+             {% endfor %}
+              <input type="submit" value="Make new team">
+                 </div>
+             <div align="right">
+                  <p>Table 1. - Users and their clicks</p>
+                 {% if users_table %}
+
+                 <table  bordercolor="black" border="1" >
+                 {% for date in users_table %}
+                 <tr class='success'>
+                     <td>{{ date.name }}</td>
+                     <td>{{ date.1 }}</td>
+                     <td>{{ date.2 }}</td>
+                     <td>{{ date.3 }}</td>
+                     <td>{{ date.all }}</td>
+                 </tr>
+                 {% endfor %}
+             </table>
+                <p>Table 2. - Teams</p>
+                 {% if teams_table %}
+                 <table  bordercolor="black" border="1"  >
+                 {% for date in teams_table %}
+                 <tr class='success'>
+                     <td>{{ date.team }}</td>
+                     <td>{{ date.user }}</td>
+                     <td>{{ date.thousand }}</td>
+                 </tr>
+                 {% endfor %}
+             </table>
+                 {% endif %}
+                 </div>
+
+            {% endif %}
+
+      </form>
+    </dif>
+</body>

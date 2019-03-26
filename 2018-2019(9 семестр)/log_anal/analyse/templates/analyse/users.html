@@ -1,0 +1,66 @@
+<style type="text/css">
+
+.m {
+
+float: left; /* Обтекание по правому краю */
+
+margin-right: 10px; /* Отступ справа */
+
+}
+
+</style>
+
+
+<div class="m">
+    {% if log_names_list %}
+        <table  bordercolor="black" border="1">
+            {% for date in log_names_list %}
+            <tr class='success'>
+                <td>{{ date.name }}</td>
+                <td>{{ date.file }}</td>
+                <td>{{ date.db }}</td>
+                <td>{{ date.log }}</td>
+                <td>{{ date.bi }}</td>
+                <td>{{ date.tri }}</td>
+                <td>{{ date.analyse }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+    <form action="/info/users/" method="post">
+        {% csrf_token %}
+        <p><input type="submit" value="Загрузить данные в БД" /></p>
+    </form>
+    <form action="{% url 'analyse' %}" method="get">
+        {% csrf_token %}
+        <p><input type="submit" value="Перейти к анализу" /></p>
+    </form>
+</div>
+
+
+{% if teams %}
+<div >
+        <table  bordercolor="black" border="1" align="right">
+            {% for date in teams %}
+            <tr class='success'>
+                <td>{{ date.t }}</td>
+                <td>{{ date.u }}</td>
+                <td>{{ date.url }}</td>
+                <td>{{ date.dom }}</td>
+                <td>{{ date.url_bi }}</td>
+                <td>{{ date.dom_bi }}</td>
+                <td>{{ date.t_bi }}</td>
+                <td>{{ date.c_bi }}</td>
+                <td>{{ date.url_tri }}</td>
+                <td>{{ date.dom_tri }}</td>
+                <td>{{ date.t_tri }}</td>
+                <td>{{ date.c_tri }}</td>
+
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+{% endif %}
+
+
