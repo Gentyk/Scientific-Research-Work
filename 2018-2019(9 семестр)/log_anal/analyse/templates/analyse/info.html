@@ -9,6 +9,12 @@
     <input type="submit" value="Информация по пользователям">
 </form>
 <form action="{% url 'vectors' %}" method="get">
-    <input type="submit" value="create vectors">
+    <input type="submit" value="сформировать вектора">
+</form>
+<form action="{% url 'patterns' %}" method="get">
+    <input type="submit" value="найти наилучших топ 10 признаков">
+</form>
+<form action="{% url 'ML' %}" method="get">
+    <input type="submit" value="запустить обучение">
 </form>
 </body>

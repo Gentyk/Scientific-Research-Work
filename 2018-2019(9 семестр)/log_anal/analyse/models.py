@@ -93,15 +93,20 @@ class Teams(models.Model):
 
     thousand = models.IntegerField(db_index=True, default=0)    # количество тысяч кликов, использованных для анализа
 
+
+class Collections(models.Model):
+    team = models.IntegerField(db_index=True)
+    thousand = models.IntegerField(db_index=True, default=0)  # количество тысяч кликов, использованных для обучения
+    users_quantity = models.IntegerField(db_index=True, default=0)
+    number_parts_per_day = models.IntegerField(default=0)   # на сколько частей разделены сутки
+    clicks = models.IntegerField(default=0) # количество кликов в одном векторе
+
 class VectorsOneVersion(models.Model):
     """
     Вектора со всеми признаками. Впоследствии мы будем брать только часть этих признаков
     """
-    team = models.IntegerField(db_index=True)
-    thousand = models.IntegerField(db_index=True, default=0)  # количество тысяч кликов, использованных для обучения
+    collection = models.ForeignKey(Collections, default=None, db_index=True, on_delete=models.CASCADE)
     username = models.CharField(db_index=True, default="I", max_length=50)
-    number_parts_per_day = models.IntegerField(default=0)   # на сколько частей разделены сутки
-    clicks = models.IntegerField(default=0) # количество кликов в одном векторе
     type = models.IntegerField(db_index=True, default=0)  # флаг, который говорит - обучающий вектор, или нет
 
     """
@@ -142,10 +147,9 @@ class VectorsOneVersion(models.Model):
 
 
 class ML(models.Model):
-    team = models.IntegerField(db_index=True)
-    clicks = models.IntegerField(default=0)
-    num_users = models.IntegerField(default=0)
+    collection = models.ForeignKey(Collections ,default=None, db_index=True, on_delete=models.CASCADE)
+    accuracy = models.FloatField(default=0.0)
     patterns = ArrayField(models.TextField(default=""))
     middleFAR = models.FloatField(default=0.0)
     middleFRR = models.FloatField(default=0.0)
-    accuracy = models.FloatField(default=0.0)
+    algorithm = models.TextField(db_index=True, default="")

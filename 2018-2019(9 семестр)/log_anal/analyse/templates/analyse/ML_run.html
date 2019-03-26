@@ -42,8 +42,13 @@
 
              <!-- Выбор алгоритма -->
              <div id="algoritms">
-                <p>ML algorithms:</p>
-                {% for i in algorithms %}
+                <p>classification_algorithms:</p>
+                {% for i in classification_algorithms %}
+                <p><input type="checkbox" name={{i}} value="+">{{ i }}</p>
+                {% endfor %}
+
+                 <p>regression_algorithms:</p>
+                {% for i in regression_algorithms %}
                 <p><input type="checkbox" name={{i}} value="+">{{ i }}</p>
                 {% endfor %}
              </div>

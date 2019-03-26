@@ -1,0 +1,18 @@
+<body>
+    <dif class="container" style="..." >
+         <form action="{% url 'patterns' %}" method="post">
+            {% csrf_token %}
+			<!-- Выбор коллекции -->
+             <div>
+                <p>select [команда, тысячи, частей дня, колво кликов в векторе]:</p>
+                {% for c in collections %}
+                <p><input type="checkbox" name={{c}} value="+">{{ c }}</p>
+                {% endfor %}
+             </div>
+
+             <div>
+                 <input type="submit" value="Do">
+             </div>
+      </form>
+    </dif>
+</body>

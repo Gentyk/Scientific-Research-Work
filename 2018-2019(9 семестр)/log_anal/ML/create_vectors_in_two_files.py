@@ -13,7 +13,7 @@ WIDTH = 7
 HEIGHT = 5
 
 class CreateVectorsDB(object):
-    def __init__(self, data, names, clicks, day_parts, team_name):
+    def __init__(self, data, names, collection):
         """
         :param data: (кол-во кликов для обучения/кол-во кликов всего)
         :param names: массив имен всех пользователей
@@ -22,12 +22,13 @@ class CreateVectorsDB(object):
         :param team_name: имя команды
         """
         self.finish_time = None
-        self.team_name = team_name
+        self.collection = collection
+        self.team_name =collection.team
         self.period = data[1]   # количество данных за период обучения и тестирования
         self.training = data[0] # количество данных за период обучения
         self.names = names
-        self.n_click = clicks
-        self.time_of_day = day_parts
+        self.n_click = collection.clicks
+        self.time_of_day = collection.number_parts_per_day
 
         self.urls = []
         self.domains = []
@@ -98,8 +99,7 @@ class CreateVectorsDB(object):
         all_categories = [i[0] for i in Log.objects.distinct('click__domain__category').values_list('click__domain__category')]
         for ind in range(0, size - self.n_click, self.n_click):
             num += 1
-            res = {'team': self.team_name, 'username': name, 'thousand': self.period, 'type': type,
-                   'number_parts_per_day': self.time_of_day, 'clicks': self.n_click}
+            res = {'collection': self.collection, 'username': name, 'type': type}
             values = all_values[ind: ind + self.n_click]
 
             # день и время суток

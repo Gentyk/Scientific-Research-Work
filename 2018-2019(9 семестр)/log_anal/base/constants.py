@@ -1,7 +1,10 @@
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import AdaBoostClassifier, GradientBoostingClassifier
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
+from sklearn.ensemble import GradientBoostingRegressor
 
 from analyse.models import VectorsOneVersion
 # количество кликов в одном векторе (пользователю предлагается выбрать
@@ -23,6 +26,12 @@ number_parts_per_day = [
 classification_algorithms = {
         'rf': RandomForestClassifier(),
         'lg': LogisticRegression(),
-        'SVC': SVC()
+        'SVC': SVC(),
+        'AdaBoost': AdaBoostClassifier(),
+        'GradientBoost': GradientBoostingClassifier(),
     }
+
+regression_algorithms = {
+        'GradientBoostRegress': GradientBoostingRegressor(),
+}
 
