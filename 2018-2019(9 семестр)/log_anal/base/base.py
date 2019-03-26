@@ -12,8 +12,21 @@ from ML.ML import classification
 def create_dirname(path):
     # проверяем наличие папки для результатов и возвращаем путь
     if not os.path.exists(path):
-        os.makedirs(path)
-    return path
+        try:
+            os.makedirs(path)
+        except:
+            i = 0
+            while True:
+                try:
+                    i += 1
+                    path = path[:path.rfind("\\")+2] + path[len(path)-150:] + str(i)
+                    os.makedirs(path)
+                    break
+                except:
+                    print(i)
+
+    #return path
+    return ""
 
 def create_vectors(clicks, day_parts, teams):
     """

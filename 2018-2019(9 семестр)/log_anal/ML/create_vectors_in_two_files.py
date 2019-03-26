@@ -175,7 +175,16 @@ class CreateVectorsDB(object):
             times = [i['click__time'] for i in values]
             pauses = [abs(times[i+1]-times[i]).seconds for i in range(len(times)-1)
                       if abs(times[i+1]-times[i]) < timedelta(seconds=300)]
+            pauses2 = [abs(times[i+1]-times[i]).seconds for i in range(len(times)-1)
+                      if abs(times[i+1]-times[i]) >= timedelta(seconds=300) and abs(times[i+1]-times[i]) < timedelta(seconds=600)]
+            pauses3 = [abs(times[i+1]-times[i]).seconds for i in range(len(times)-1)
+                      if abs(times[i+1]-times[i]) >= timedelta(seconds=600)]
             res['middle_pause'] = sum(pauses) / len(pauses)
+            res['middle_pause2'] = sum(pauses2) / len(pauses)
+            res['middle_pause3'] = sum(pauses3) / len(pauses)
+            res['quantity_middle_pause'] = len(pauses)
+            res['quantity_middle_pause2'] = len(pauses2)
+            res['quantity_middle_pause3'] = len(pauses3)
 
             # если был факт старта компа
             start_pause = 0

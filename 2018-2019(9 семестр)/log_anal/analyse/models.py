@@ -109,7 +109,15 @@ class VectorsOneVersion(models.Model):
     """
     days = ArrayField(models.IntegerField(default=0))   # активность по дням недели
     day_parts = ArrayField(models.IntegerField(default=0))  # активность по времени суток
+
     middle_pause = models.FloatField(default=0) # средняя пауза, среди пауз менее 5 мин
+
+    middle_pause2 = models.FloatField(default=0)  # средняя пауза, среди пауза от 5 мин до 10 мин
+    middle_pause3 = models.FloatField(default=0)  # средняя пауза, среди пауза от 10 мин
+    quantity_middle_pause = models.IntegerField(default=0)
+    quantity_middle_pause2 = models.IntegerField(default=0)
+    quantity_middle_pause3 = models.IntegerField(default=0)
+
     start_comp_pause = models.FloatField(default=0)
 
     urls = ArrayField(models.IntegerField(default=0)) # количество переходов на частые url
