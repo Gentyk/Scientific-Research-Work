@@ -16,6 +16,7 @@ from base.new_analyse import base_analyse
 from base.filling_the_database import filling
 from base.base import create_vectors, train, get_better_patterns
 from base.constants import classification_algorithms, patterns, clicks, number_parts_per_day, regression_algorithms
+from ML.ML import combine_train
 
 def get_selection(request, full_array):
     find_array = []
@@ -249,24 +250,39 @@ class MLView(View):
         t.start()
         return HttpResponse("success")
 
-class MLInfoView(View):
+class CombineML(View):
     def get(self, request, *args, **kwargs):
         """
         Выводим таблицу с информацией по точности и ошибкам
         """
-        data = {'data': [['1','2','3']]
+        collections = [str(col.team) + '_' + str(col.clicks)
+                            for col in Collections.objects.all() if
+                            VectorsOneVersion1.objects.filter(collection=col).count() > 1]
+        best_results = [{'collection': 'collection', 'best_accuracy': 'best_accuracy'}]
+        for collection in Collections.objects.all():
+            accuracy = [i[0] for i in ML.objects.filter(collection=collection).values_list('accuracy')]
+            accuracy.sort(reverse=True)
+            if accuracy:
+                best_results.append(
+                    {'collection': str(collection.team) + '_' + str(collection.clicks), 'best_accuracy': accuracy[0]})
+
+        data = {
+            'collections': collections,
+           # 'classification_algorithms': classification_algorithms,
+           # 'regression_algorithms': regression_algorithms,
+            'best_results': best_results,
         }
-        return render(request, 'analyse/vectors_table.html', data)
+        return render(request, 'analyse/CombineMLRun.html', data)
 
+    def post(self, request):
+        collections = [str(col.team) + '_' + str(col.clicks)
+                            for col in Collections.objects.all() if
+                            VectorsOneVersion1.objects.filter(collection=col).count() > 1]
 
+        collections_dict = { str(col.team) + '_' + str(col.clicks): col
+                             for col in Collections.objects.all() if VectorsOneVersion1.objects.filter(collection=col).count() > 1}
+        selected_collections = [collections_dict[i] for i in get_selection(request, collections)]
 
-
-
-
-
-
-
-
-
-
-
+        t = threading.Thread(target=combine_train, args=(selected_collections,))
+        t.start()
+        return HttpResponse("success")

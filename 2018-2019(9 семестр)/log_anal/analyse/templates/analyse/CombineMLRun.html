@@ -1,0 +1,41 @@
+<head>
+  <style type="text/css">
+   #m { position: absolute; }
+
+   #m {
+   left:900px;
+   }
+  </style>
+</head>
+<body>
+
+
+    <dif>
+         <form action="{% url 'CombineML' %}" method="post">
+            {% csrf_token %}
+			<!-- Выбор коллекции -->
+             <div>
+                <p>select [команда, тысячи, частей дня, колво кликов в векторе]:</p>
+                {% for c in collections %}
+                <p><input type="checkbox" name={{c}} value="+">{{ c }}</p>
+                {% endfor %}
+
+                 <input type="submit" value="Do">
+             </div>
+
+              <div id="m">
+
+             <table  bordercolor="black" border="1">
+            {% for date in best_results %}
+            <tr class='success'>
+                <td>{{ date.collection }}</td>
+                <td>{{ date.best_accuracy }}</td>
+
+            </tr>
+            {% endfor %}
+
+        </table>
+              </div>
+      </form>
+    </dif>
+</body>

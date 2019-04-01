@@ -97,13 +97,12 @@ def regression(collection, pattern_list, algorithms):
 
 
 
-
 def classification(collection, pattern_list, algorithms):
     # данные для обучения
     patterns = pattern_list.copy()
     patterns.append('username')
     print(patterns)
-    print(VectorsOneVersion1.objects.filter(collection=collection).count())
+
     fil = {'collection': collection, 'type': 1}
     X, Y = get_arrays(fil, patterns)
     n = len(Y)
@@ -174,7 +173,7 @@ def classification(collection, pattern_list, algorithms):
         #print("\nсредний FRR:" + str(middleFRR))
         #f.write("\nсредний FAR:" + str(middleFAR))
         #f.write("\nсредний FRR:" + str(middleFRR))
-
+        print(pattern_list)
         ML.objects.create(
             collection = collection,
             patterns = pattern_list,
@@ -184,13 +183,15 @@ def classification(collection, pattern_list, algorithms):
             algorithm=name_alg,
         )
 
-def get_arrays(criterion, patterns):
+def get_arrays(criterion, patterns, add_field=0):
     mass = VectorsOneVersion1.objects.filter(**criterion).values_list(*patterns)
     X = []
     Y = []
+    if add_field:
+        fields = []
     for line in mass:
         l_X = []
-        for obj in line[:len(line)-1]:
+        for obj in line[:len(line) - 1 - add_field]:
             if isinstance(obj, list):
                 # для карты кликов
                 if isinstance(obj[0], list):
@@ -202,8 +203,12 @@ def get_arrays(criterion, patterns):
                 l_X.append(obj)
         Y.append(line[-1])
         X.append(l_X.copy())
+        if add_field:
+            fields.append(line[-1 - add_field])
     X = np.array(X)
     Y = np.array(Y)
+    if add_field:
+        return X, Y, fields
     return X, Y
 
 
@@ -243,3 +248,98 @@ def get_arrays_re(criterion, patterns, names, name=None):
     X = np.array(X)
     Y = np.array(Y)
     return X, Y
+
+
+def combine_train(collections):
+    main_collection = None
+
+    # каждую коллекцию
+    algorithms = {}
+    for collection in collections:
+        if collection.clicks == 30:
+            main_collection = collection
+
+    # находим лучшие признаки
+    patterns = [i[0] for i in ML.objects.filter(collection=main_collection).order_by('id').values_list('patterns')]
+    accuracy = [i[0] for i in ML.objects.filter(collection=main_collection).order_by('id').values_list('accuracy')]
+    max_accuracy = max(accuracy)
+    patterns_list = patterns[accuracy.index(max_accuracy)]
+
+
+    # считываем данные и обучаем
+    patterns = patterns_list.copy()
+    patterns.append('username')
+    fil = {'collection': main_collection, 'type': 1}
+    X, Y = get_arrays(fil, patterns)
+    scaler = StandardScaler()
+    scaler.fit(X)
+    X = scaler.transform(X)
+    a = classification_algorithms['rf']
+    a.fit(X,Y)
+
+    # данные для тестирования
+    patterns = patterns_list.copy()
+    patterns.extend(['last_click','username'])
+    fil = {'collection': main_collection, 'type': 2}
+    test_X, main_test_Y, main_last_click_list = get_arrays(fil, patterns, 1)
+    test_X = scaler.transform(test_X)
+    main_probability_array =[{a.classes_[i]: array[i] for i in range(len(array))} for array in a.predict_proba(test_X)]
+    del(collections[collections.index(main_collection)])
+
+    for collection in collections:
+        # находим лучшие признаки
+        patterns = [i[0] for i in ML.objects.filter(collection=collection).order_by('id').values_list('patterns')]
+        accuracy = [i[0] for i in ML.objects.filter(collection=collection).order_by('id').values_list('accuracy')]
+        patterns_list = patterns[accuracy.index(max(accuracy))]
+        max_accuracy = max(accuracy)
+        #print("!"+str(patterns_list))
+
+        # считываем данные и обучаем
+        patterns = patterns_list.copy()
+        patterns.append('username')
+        fil = {'collection': collection, 'type': 1}
+        X, Y = get_arrays(fil, patterns)
+        scaler = StandardScaler()
+        scaler.fit(X)
+        X = scaler.transform(X)
+        a = classification_algorithms['rf']
+        a.fit(X,Y)
+
+        # тестируем
+        patterns = patterns_list.copy()
+        patterns.extend(['last_click','username'])
+        fil = {'collection': collection, 'type': 2}
+        a1, b, c = get_combine_arrays(fil, patterns)
+        test_X, last_click_list = [], []
+        for i in range(len(c)):
+            if c[i] in main_last_click_list:
+                test_X.append(a1[i])
+                last_click_list.append(c[i])
+        test_X = scaler.transform(test_X)
+        probability_array = a.predict_proba(test_X)
+        for i in range(len(last_click_list)):
+            for j in range(len(probability_array[i])):
+                #print(probability_array[i][j])
+               # print(max_accuracy)
+                cc = probability_array[i][j]# * max_accuracy
+                main_probability_array[main_last_click_list.index(last_click_list[i])][a.classes_[j]] += cc
+
+
+    good = 0
+    for i in range(len(main_test_Y)):
+        max1 = 0
+        name = ''
+        for k,v in main_probability_array[i].items():
+            if v > max1:
+                max1 = v
+                name = k
+        if name == main_test_Y[i]:
+            good += 1
+
+    print('результат' + str(good/len(main_test_Y)))
+
+
+
+
+
+

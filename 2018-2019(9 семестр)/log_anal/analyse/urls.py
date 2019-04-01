@@ -11,5 +11,5 @@ urlpatterns = [
     url('vectors/$', VectorsView.as_view(), name="vectors"),
     url('patterns/$', PatternsView.as_view(), name="patterns"),
     url('ML/$', MLView.as_view(), name="ML"),
-    url('MLi/$', MLInfoView.as_view(), name="ML_info"),
+    url('MLCombine/$', CombineML.as_view(), name="CombineML"),
 ]
