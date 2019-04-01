@@ -1,6 +1,6 @@
 <head>
   <style type="text/css">
-   #teams, #clicks, #patterns, #algoritms, #action { position: absolute; }
+   #teams, #clicks, #patterns, #algoritms, #action, #m { position: absolute; }
    #teams {
     left: 400px;
    }
@@ -15,6 +15,9 @@
    }
    #action {
     left: 550px;
+   }
+   #m {
+   left:900px;
    }
   </style>
 </head>
@@ -57,6 +60,20 @@
              <div id="action">
                  <input type="submit" value="Do">
              </div>
+
+              <div id="m">
+
+             <table  bordercolor="black" border="1">
+            {% for date in best_results %}
+            <tr class='success'>
+                <td>{{ date.collection }}</td>
+                <td>{{ date.best_accuracy }}</td>
+
+            </tr>
+            {% endfor %}
+
+        </table>
+              </div>
       </form>
     </dif>
 </body>

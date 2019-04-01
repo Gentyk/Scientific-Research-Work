@@ -6,7 +6,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import GradientBoostingRegressor
 
-from analyse.models import VectorsOneVersion
+from analyse.models import VectorsOneVersion1
 # количество кликов в одном векторе (пользователю предлагается выбрать
 clicks = [
     '5',
@@ -15,8 +15,8 @@ clicks = [
 ]
 
 # выделяемые признаки
-exclude = ['id', 'team', 'username', 'number_parts_per_day', 'clicks', 'thousand', 'type']
-patterns = [f.name for f in VectorsOneVersion._meta.fields if f.name not in exclude]
+exclude = ['id', 'team', 'username', 'number_parts_per_day', 'clicks', 'thousand', 'type', 'last_click', 'collection']
+patterns = [f.name for f in VectorsOneVersion1._meta.fields if f.name not in exclude]
 
 number_parts_per_day = [
     '8',

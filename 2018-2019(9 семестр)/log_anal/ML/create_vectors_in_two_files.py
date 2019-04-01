@@ -7,7 +7,7 @@ import requests
 import xlsxwriter
 import vk_api
 
-from analyse.models import Log, Teams, VectorsOneVersion
+from analyse.models import Log, Teams, VectorsOneVersion1
 
 WIDTH = 7
 HEIGHT = 5
@@ -88,7 +88,7 @@ class CreateVectorsDB(object):
             # тестирование
             all_v = log.filter(thousand__gte=self.training).filter(thousand__lt=self.period)
             size = all_v.count()
-        all_fields = ['click__domain__domain', 'click__domain__category', 'click__domain__type', 'click__url__url',
+        all_fields = ['id', 'click__domain__domain', 'click__domain__category', 'click__domain__type', 'click__url__url',
                       'click__time', 'x1_window_coordinates', 'x2_window_coordinates', 'x_cursor_coordinates',
                       'y1_window_coordinates', 'y2_window_coordinates', 'y_cursor_coordinates', 'start_computer']
         all_values = all_v.order_by('id').values(*all_fields)
@@ -106,9 +106,13 @@ class CreateVectorsDB(object):
             vector_times = [i['click__time'] for i in values]
             res['day_parts'] = [0 for i in range(self.time_of_day)]
             res['days'] = [0 for i in range(7)]
+            res['activity_time'] = [0 for i in range(self.time_of_day * 7)]
             for i in vector_times:
                 res['days'][i.weekday()] = 1
                 res['day_parts'][i.hour // self.time_of_day] = 1
+                res['activity_time'][i.weekday()*7 + i.hour // self.time_of_day] = 1
+
+            res['last_click'] = values[self.n_click-1]['id']
 
             # считаем, сколько раз был на частых урлах
             # заполняем для них карту кликов
@@ -257,7 +261,7 @@ class CreateVectorsDB(object):
             res.update(self.get_info('domain_type', 'click__domain__type', all_types,values))
             res.update(self.get_info('domain_categories', 'click__domain__category', all_categories, values))
 
-            new = VectorsOneVersion.objects.create(**res)
+            new = VectorsOneVersion1.objects.create(**res)
             new.save()
         #print(num)
 

@@ -7,6 +7,7 @@ from base.analys import Analyst
 def base_analyse(team, clicks_thousand, users):
     start_time = time.time()
     for name in users:
+        print('start ' + name)
         log = Log.objects.filter(username=name)
         u_log = log.filter(thousand__lt=clicks_thousand)
         finish_time = u_log.latest('click__time').click.time
@@ -35,6 +36,7 @@ def base_analyse(team, clicks_thousand, users):
 
             thousand=clicks_thousand,
         )
+        print('end ' + name)
     msg = "Анализ выполнен за время: %s seconds ---" % (
     time.time() - start_time)
     print(msg)

@@ -5,13 +5,15 @@ from os.path import isfile, join
 import time
 import re
 
+from pytz import timezone
+
 from analyse.models import Bigrams, Log, Trigrams, Domains, URLs, Clicks
 
 def filling():
     start_time = time.time()
-    #Clicks.objects.all().delete()
+    Clicks.objects.all().delete()
     Bigrams.objects.all().delete()
-    #Log.objects.all().delete()
+    Log.objects.all().delete()
     Trigrams.objects.all().delete()
     log_names = [f.split('.')[0] for f in listdir('logs') if isfile(join('logs', f))]
     for name in log_names:

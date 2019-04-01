@@ -94,14 +94,20 @@ class Teams(models.Model):
     thousand = models.IntegerField(db_index=True, default=0)    # количество тысяч кликов, использованных для анализа
 
 
+class BaseCollections(models.Model):
+    team = models.IntegerField(db_index=True)
+    thousand = models.IntegerField(db_index=True, default=0)  # количество тысяч кликов, использованных для обучения
+    users_quantity = models.IntegerField(db_index=True, default=0)
+    number_parts_per_day = models.IntegerField(default=0)  # на сколько частей разделены сутки
+
 class Collections(models.Model):
     team = models.IntegerField(db_index=True)
     thousand = models.IntegerField(db_index=True, default=0)  # количество тысяч кликов, использованных для обучения
     users_quantity = models.IntegerField(db_index=True, default=0)
-    number_parts_per_day = models.IntegerField(default=0)   # на сколько частей разделены сутки
+    number_parts_per_day = models.IntegerField(default=0)  # на сколько частей разделены сутки
     clicks = models.IntegerField(default=0) # количество кликов в одном векторе
 
-class VectorsOneVersion(models.Model):
+class VectorsOneVersion1(models.Model):
     """
     Вектора со всеми признаками. Впоследствии мы будем брать только часть этих признаков
     """
@@ -114,9 +120,9 @@ class VectorsOneVersion(models.Model):
     """
     days = ArrayField(models.IntegerField(default=0))   # активность по дням недели
     day_parts = ArrayField(models.IntegerField(default=0))  # активность по времени суток
+    activity_time = ArrayField(models.IntegerField(default=0), default=list)  # совмещенная активность по дням недели и времени суток
 
     middle_pause = models.FloatField(default=0) # средняя пауза, среди пауз менее 5 мин
-
     middle_pause2 = models.FloatField(default=0)  # средняя пауза, среди пауза от 5 мин до 10 мин
     middle_pause3 = models.FloatField(default=0)  # средняя пауза, среди пауза от 10 мин
     quantity_middle_pause = models.IntegerField(default=0)
@@ -145,9 +151,25 @@ class VectorsOneVersion(models.Model):
     domain_type = ArrayField(models.IntegerField(default=0))
     domain_categories = ArrayField(models.IntegerField(default=0))
 
+    last_click = models.IntegerField(default=0) # для синхронизации тестирования пачек из нескольких кликов
 
+
+class Patterns(models.Model):
+    patterns = ArrayField(models.TextField(default=""))
+
+
+# результаты МО на отельную команду
 class ML(models.Model):
     collection = models.ForeignKey(Collections ,default=None, db_index=True, on_delete=models.CASCADE)
+    accuracy = models.FloatField(default=0.0)
+    patterns = ArrayField(models.TextField(default=""))
+    middleFAR = models.FloatField(default=0.0)
+    middleFRR = models.FloatField(default=0.0)
+    algorithm = models.TextField(db_index=True, default="")
+
+# результаты МО на отельную команду
+class CombineMLs(models.Model):
+    collection = models.ForeignKey(BaseCollections ,default=None, db_index=True, on_delete=models.CASCADE)
     accuracy = models.FloatField(default=0.0)
     patterns = ArrayField(models.TextField(default=""))
     middleFAR = models.FloatField(default=0.0)

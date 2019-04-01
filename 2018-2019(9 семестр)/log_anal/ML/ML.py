@@ -5,16 +5,17 @@ import time
 
 from sklearn.preprocessing import StandardScaler
 
-from analyse.models import ML, VectorsOneVersion
+from analyse.models import ML, VectorsOneVersion1
 from base.constants import classification_algorithms, regression_algorithms
 
 
-def regression(path, names, pattern_list, algorithms, info):
+def regression(collection, pattern_list, algorithms):
     # данные для обучения
     patterns = pattern_list
     patterns.append('username')
-    fil = info.copy()
-    fil['type'] = 1
+    fil = {'collection' : collection, 'type': 1}
+    names = [i[0] for i in
+    VectorsOneVersion1.objects.filter(collection=collection).distinct('username').values_list('username')]
     X, Y = get_arrays_re(fil, patterns, names, 'bv')
     n = len(Y)
     print('Длина вектора' + str(len(X[0])))
@@ -25,8 +26,7 @@ def regression(path, names, pattern_list, algorithms, info):
     X = scaler.transform(X)
 
     # данные для тестирования
-    fil = info.copy()
-    fil['type'] = 2
+    fil = {'collection': collection, 'type': 2}
     test_X, test_Y = get_arrays_re(fil, patterns, names)
 
     n_test = len(test_Y)
@@ -98,12 +98,13 @@ def regression(path, names, pattern_list, algorithms, info):
 
 
 
-def classification(names, pattern_list, algorithms, info):
+def classification(collection, pattern_list, algorithms):
     # данные для обучения
-    patterns = pattern_list
+    patterns = pattern_list.copy()
     patterns.append('username')
-    fil = info.copy()
-    fil['type'] = 1
+    print(patterns)
+    print(VectorsOneVersion1.objects.filter(collection=collection).count())
+    fil = {'collection': collection, 'type': 1}
     X, Y = get_arrays(fil, patterns)
     n = len(Y)
     print('Длина вектора' + str(len(X[0])))
@@ -114,19 +115,19 @@ def classification(names, pattern_list, algorithms, info):
     X = scaler.transform(X)
 
     # данные для тестирования
-    fil = info.copy()
-    fil['type'] = 2
+    fil = {'collection': collection, 'type': 2}
     test_X, test_Y = get_arrays(fil, patterns)
 
     n_test = len(test_Y)
     test_X = scaler.transform(test_X)
 
+    names = [i[0] for i in VectorsOneVersion1.objects.filter(collection=collection).distinct('username').values_list('username')]
     # данные для определения FAR и FRR
     n_login_attempt = {name: 0 for name in names}  # сколько раз легитимный пользователь пытался войти
     for name in test_Y:
         n_login_attempt[name] += 1
 
-    print(n_login_attempt)
+    #print(n_login_attempt)
 
     # несколько алгоритмов МО
     ml = {}
@@ -175,7 +176,7 @@ def classification(names, pattern_list, algorithms, info):
         #f.write("\nсредний FRR:" + str(middleFRR))
 
         ML.objects.create(
-            collection = info['collection'],
+            collection = collection,
             patterns = pattern_list,
             middleFAR = middleFAR,
             middleFRR = middleFRR,
@@ -184,7 +185,7 @@ def classification(names, pattern_list, algorithms, info):
         )
 
 def get_arrays(criterion, patterns):
-    mass = VectorsOneVersion.objects.filter(**criterion).values_list(*patterns)
+    mass = VectorsOneVersion1.objects.filter(**criterion).values_list(*patterns)
     X = []
     Y = []
     for line in mass:
@@ -201,8 +202,6 @@ def get_arrays(criterion, patterns):
                 l_X.append(obj)
         Y.append(line[-1])
         X.append(l_X.copy())
-    print(len(l_X))
-
     X = np.array(X)
     Y = np.array(Y)
     return X, Y
@@ -218,9 +217,9 @@ def reg_f(X):
 
 def get_arrays_re(criterion, patterns, names, name=None):
     if name:
-        mass = VectorsOneVersion.objects.filter(username=name).filter(**criterion).values_list(*patterns)
+        mass = VectorsOneVersion1.objects.filter(username=name).filter(**criterion).values_list(*patterns)
     else:
-        mass = VectorsOneVersion.objects.filter(**criterion).values_list(*patterns)
+        mass = VectorsOneVersion1.objects.filter(**criterion).values_list(*patterns)
     X = []
     Y = []
     for line in mass:
@@ -237,8 +236,6 @@ def get_arrays_re(criterion, patterns, names, name=None):
                 l_X.append(obj)
         Y.append(line[-1])
         X.append(l_X.copy())
-    print(len(l_X))
-
     if name:
         Y = reg_f(X)
     else:

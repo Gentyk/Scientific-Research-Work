@@ -5,7 +5,7 @@ import itertools
 import os
 import time
 
-from analyse.models import Teams, VectorsOneVersion, Collections
+from analyse.models import Teams, VectorsOneVersion1, Collections, Patterns, ML
 from base.constants import classification_algorithms, regression_algorithms, patterns
 from ML.create_vectors_in_two_files import CreateVectorsDB
 from ML.ML import classification, regression
@@ -35,6 +35,7 @@ def create_vectors(clicks, day_parts, teams):
     В зависимости от режима запускает или формирование выборок, или запускает МО.
     """
     start_time = time.time()
+    array_coll = []
     for team in teams:
         for day_part in day_parts:
             for n_click in clicks:
@@ -43,39 +44,59 @@ def create_vectors(clicks, day_parts, teams):
                 key = {'team': team, 'number_parts_per_day': day_part, 'clicks': n_click, 'thousand': thousand,
                        'users_quantity': len(names)}
                 if Collections.objects.filter(**key):
-                    collection = Collections.objects.get(**key)
-                    VectorsOneVersion.objects.filter(collection=collection).delete()
+                    col = Collections.objects.get(**key)
+                    VectorsOneVersion1.objects.filter(collection=col).delete()
                 else:
                     col = Collections.objects.create(**key)
                     col.save()
+
+                if not col in array_coll:
+                    array_coll.append(col)
 
                 data = (thousand, int(thousand/0.7))
                 CreateVectorsDB(data, names, col)
     msg = "Завершено. Время выполнения: %s seconds ---" % (time.time() - start_time)
     print(msg)
+    train(array_coll, ['5 best patterns set'], ['rf'])
+
+
 
 def train(collections, list_permission, algorithms):
     """
     В зависимости от режима запускает или формирование выборок, или запускает МО.
     """
+    print(list_permission)
     start_time = time.time()
     for collection in collections:
-        team = collection[0]
-        thousand = collection[1]
-        day_part = collection[2]
-        n_click = collection[3]
-
-        # сюда буду сохранять более подробные отчеты
-        #path = create_dirname(str(".\\dataset2\\") + str(team) + " perm " + str(list_permission) + " " + \
-          #                    str(day_part) + "t " + str(n_click) + "cl " + str(thousand))
-        names = [name[0] for name in VectorsOneVersion.objects.filter(team=team, thousand=thousand, number_parts_per_day=day_part, clicks=n_click).
-            distinct('username').values_list('username')]
         print("!!!!")
-        info = {'team': team, 'clicks': n_click, 'number_parts_per_day': day_part, 'thousand': thousand}
-        if any([True if i in classification_algorithms else False for i in algorithms]):
-            classification(names, list_permission, algorithms, info)
-        if any([True if i in regression_algorithms else False for i in algorithms]):
-            regression(names, list_permission, algorithms, info)
+
+        if ['5_best_patterns_set'] == list_permission:
+            """к сожалению я стер лучшее, поэтому костыль ниже
+            percent = [i[0] for i in ML.objects.values_list('accuracy')]
+            percent.sort(reverse=True)
+            percent = set(percent[:5])
+            for i in percent:
+                best_patterns = [i[0] for i in ML.objects.filter(accuracy=i).values_list('patterns')]
+                for pat in best_patterns:
+                    if any([True if i in classification_algorithms else False for i in algorithms]):
+                        classification(names, pat, algorithms, info)
+                    if any([True if i in regression_algorithms else False for i in algorithms]):
+                        regression(names, pat, algorithms, info)
+            """
+            best_patterns = [i[0] for i in Patterns.objects.values_list('patterns')]
+            best_patterns = best_patterns[:5]
+            print(best_patterns)
+            for pat in best_patterns:
+                if any([True if i in classification_algorithms else False for i in algorithms]):
+                    classification(collection, pat, algorithms)
+                if any([True if i in regression_algorithms else False for i in algorithms]):
+                    regression(collection, pat, algorithms)
+
+        else:
+            if any([True if i in classification_algorithms else False for i in algorithms]):
+                classification(collection, list_permission, algorithms)
+            if any([True if i in regression_algorithms else False for i in algorithms]):
+                regression(collection, list_permission, algorithms)
     msg = "Завершено. Время выполнения: %s seconds ---" % (time.time() - start_time)
     print(msg)
     #messagebox.showerror("Выполнено", msg)
@@ -85,14 +106,32 @@ def get_better_patterns(collections):
     for i in collections:
         col = Collections.objects.get(pk=i[0])
 
-        for l in range(1, len(patterns)+1):
-            for j in itertools.combinations(patterns, l):
-                patterns_list = list(j)
-                print(patterns_list)
-                names = [name[0] for name in Teams.objects.filter(team=col.team).values_list('username')]
-                algorithms = ['rf']
-                info = {'collection': col}
-                classification(names, patterns_list, algorithms, info)
+        pats = [i[0] for i in Patterns.objects.all().values_list('patterns')]
+        patterns_array = [
+            ['url_bi', 'url_bi_pauses', 'dom_bi', 'dom_bi_pauses'],
+            ['url_tri', 'url_tri_pauses', 'dom_tri', 'dom_tri_pauses'],
+            ['middle_pause2', 'middle_pause3', 'quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3']
+        ]
+        for patterns1 in patterns_array:
+            for pat in pats:
+                for l in range(1, len(patterns1)+1):
+                    for j in itertools.combinations(patterns1, l):
+                        patterns_list = list(set(list(j) + pat))
+                        print(patterns_list)
+                        names = [name[0] for name in Teams.objects.filter(team=col.team).values_list('username')]
+                        algorithms = ['rf']
+                        info = {'collection': col}
+                        print(names)
+                        classification(names, patterns_list, algorithms, info)
+
+            mass = [i[0] for i in ML.objects.all().values_list('accuracy')]
+            mass.sort()
+            ML.objects.filter(accuracy__lt=mass[len(mass)-100]).delete()
+            Patterns.objects.all().delete()
+            for pat in ML.objects.all().values_list('patterns'):
+                p = Patterns.objects.create(patterns=pat[0])
+                p.save()
+    print('завершено')
 
 
 

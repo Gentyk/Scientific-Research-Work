@@ -11,11 +11,11 @@ from django.shortcuts import render
 from django.views import generic
 from django.views.generic.base import View
 
-from analyse.models import Bigrams, Log, Trigrams, Teams, Clicks, Domains, URLs, VectorsOneVersion
+from analyse.models import Bigrams, Log, Trigrams, Teams, Domains, URLs, VectorsOneVersion1, Collections, ML
 from base.new_analyse import base_analyse
 from base.filling_the_database import filling
-from base.base import create_vectors, train
-from base.constants import classification_algorithms, patterns, clicks, number_parts_per_day
+from base.base import create_vectors, train, get_better_patterns
+from base.constants import classification_algorithms, patterns, clicks, number_parts_per_day, regression_algorithms
 
 def get_selection(request, full_array):
     find_array = []
@@ -187,29 +187,64 @@ class VectorsView(View):
         return HttpResponse("success")
 
 
-class MLView(View):
-    collections = ['|'.join([str(i) for i in team]) for team in
-                   VectorsOneVersion.objects.distinct('team', 'thousand', 'number_parts_per_day', 'clicks').
-                   values_list('team', 'thousand', 'number_parts_per_day', 'clicks')]
+class PatternsView(View):
+    """
+    Находит и выводит лучшие комбинации признаков
+    """
+    collections = ['|'.join([str(i) for i in team]) for team in Collections.objects.values_list()]
 
-    def get(self, request, *args, **kwargs):
-        self.collections = [ '|'.join([str(i) for i in team]) for team in
-                             VectorsOneVersion.objects.distinct('team', 'thousand', 'number_parts_per_day', 'clicks').
-                             values_list('team', 'thousand', 'number_parts_per_day', 'clicks')]
+    def get(self, request):
+        self.collections = [ '|'.join([str(i) for i in team]) for team in Collections.objects.values_list()]
         data = {
             'collections': self.collections,
-            'patterns': patterns,
-            'algorithms': classification_algorithms,
+        }
+        return render(request, 'analyse/patterns.html', data)
+
+    def post(self, request):
+        collections_dict = {'|'.join([str(i) for i in team]): team for team in Collections.objects.values_list()}
+        selected_collections = [collections_dict[i] for i in get_selection(request, self.collections)]
+        t = threading.Thread(target=get_better_patterns, args=(selected_collections,))
+        t.start()
+        return HttpResponse("success")
+
+
+class MLView(View):
+    """
+    Запуск машинного обучения с выбором признаков
+    """
+
+    collections = [ str(col.team) + '_' + str(col.clicks)
+                             for col in Collections.objects.all() if VectorsOneVersion1.objects.filter(collection=col).count() > 1]
+    local_patterns = patterns + ['5_best_patterns_set']
+    def get(self, request, *args, **kwargs):
+        self.collections = [ str(col.team) + '_' + str(col.clicks)
+                             for col in Collections.objects.all() if VectorsOneVersion1.objects.filter(collection=col).count() > 1]
+        best_results = [{'collection': 'collection', 'best_accuracy':'best_accuracy'}]
+        for collection in Collections.objects.all():
+            accuracy = [i[0] for i in ML.objects.filter(collection=collection).values_list('accuracy')]
+            accuracy.sort(reverse=True)
+            if accuracy:
+                best_results.append({'collection': str(collection.team) + '_' + str(collection.clicks), 'best_accuracy': accuracy[0]})
+
+        data = {
+            'collections': self.collections,
+            'patterns': self.local_patterns,
+            'classification_algorithms': classification_algorithms,
+            'regression_algorithms': regression_algorithms,
+            'best_results': best_results,
         }
         return render(request, 'analyse/ML_run.html', data)
 
     def post(self, request):
-        collections_dict = {'|'.join([str(i) for i in team]): team for team in
-                            VectorsOneVersion.objects.distinct('team', 'thousand', 'number_parts_per_day', 'clicks').
-                            values_list('team', 'thousand', 'number_parts_per_day', 'clicks')}
+        collections_dict = { str(col.team) + '_' + str(col.clicks): col
+                             for col in Collections.objects.all() if VectorsOneVersion1.objects.filter(collection=col).count() > 1}
         selected_collections = [collections_dict[i] for i in get_selection(request, self.collections)]
-        selected_patterns = [i for i in get_selection(request, patterns)]
-        selected_algorithms = [i for i in get_selection(request, classification_algorithms)]
+
+        selected_patterns = [i for i in get_selection(request, self.local_patterns)]
+
+        selected_algorithms = [i for i in get_selection(request, classification_algorithms)] + \
+                              [i for i in get_selection(request, regression_algorithms)]
+        print(selected_algorithms)
         t = threading.Thread(target=train, args=(selected_collections, selected_patterns, selected_algorithms))
         t.start()
         return HttpResponse("success")
