@@ -12,7 +12,7 @@ from django.views import generic
 from django.views.generic.base import View
 
 from analyse.models import Bigrams, Log, Trigrams, Teams, Domains, URLs, VectorsOneVersion1, Collections, ML
-from base.new_analyse import base_analyse
+from base.new_analyse import base_analyse, base_analyse2
 from base.filling_the_database import filling
 from base.base import create_vectors, train, get_better_patterns
 from base.constants import classification_algorithms, patterns, clicks, number_parts_per_day, regression_algorithms
@@ -158,6 +158,47 @@ class AnalyseView(View):
         clicks_thousand = int(request.POST["clicks"])
         users = get_selection(request, self.names)
         t = threading.Thread(target=base_analyse, args=(team, clicks_thousand, users,))
+        t.start()
+        return HttpResponse("success")
+
+
+class AnalyseView2(View):
+    """
+    Запускает анализ для пользователей, данные которых есть в основных таблицах (Log, Bigramm, Trigramm)
+    """
+    names = [name[0] for name in Log.objects.all().distinct('username').values_list("username")]
+
+    def get(self, request, *args, **kwargs):
+        column_names = {'name': 'user', 'all': 'all', '1': '1 week', '2': '2 weeks', '3': '3 weeks'}
+        data = {'users': self.names, 'users_table': [column_names], 'teams_table': []}
+        for name in self.names:
+            log = Log.objects.filter(username=name)
+            start_time = log.earliest('click__time').click.time
+            data['users_table'].append({
+                'name': name,
+                'all': log.count(),
+                '1': log.filter(click__time__lte= start_time + timedelta(days=7)).count(),
+                '2': log.filter(click__time__lte=start_time + timedelta(days=14)).count(),
+                '3': log.filter(click__time__lte=start_time + timedelta(days=21)).count(),
+            })
+
+        data['teams_table'].append({'team': 'team', 'user': 'user', 'thousand': 'thousand'})
+        u_data = Teams.objects.values('team', 'username', 'thousand')
+        for i in u_data:
+            data['teams_table'].append({'team': i['team'], 'user': i['username'], 'thousand': i['thousand']})
+
+        return render(request, 'analyse/users_analyse2.html', data)
+
+    def post(self, request):
+        """
+        Для каждого пользователя находит частые url и другие признаки. В результате заполняется таблица Users.
+        """
+        team = int(request.POST["team"])
+        if Teams.objects.filter(team=team):
+            Teams.objects.filter(team=team).delete()
+        weeks = int(request.POST["weeks"])
+        users = get_selection(request, self.names)
+        t = threading.Thread(target=base_analyse2, args=(team, weeks, users,))
         t.start()
         return HttpResponse("success")
 

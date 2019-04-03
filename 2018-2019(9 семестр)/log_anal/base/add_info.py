@@ -61,19 +61,22 @@ def url_genre():
 
 
 def domain_genre():
-    domains = [(i[1], i[0][:(i[0].find(i[1]) + len(i[1]))]) for i in Log.objects.distinct('domain').values_list('url', 'domain')]
+    domains = [(i[1], i[0][:(i[0].find(i[1]) + len(i[1]))]) for i in Log.objects.distinct('click__domain__domain').values_list('click__url__url', 'click__domain__domain')]
     print(len(domains))
     diffbot = DiffbotClient()
-    token = 'a8e38e1dccdb5784147317bfd5119c1d'  # '18aa09158e10b70ac108c941f060c99a'
+    token = '9d5a6ddb2521d8b21c2fa27c4a2db715'
     i = 0
     prefix = ["https://", "http://"]
     for domain, url in domains:
         i += 1
         if i % 1000 == 999:
             print(i)
-        try:
-            dom = Domains.objects.get(domain=domain)
-        except:
+
+        # если у нас есть домены в Log? но их нету в Domains
+        #try:
+        #    dom = Domains.objects.get(domain=domain)
+        #except:
+        if Domains.objects.get(domain=domain).type == '':
             api = "product"
             j = 0
             while j < 2:
@@ -127,10 +130,18 @@ def domain_genre():
                     print(domain)
                     print(response)
 
-            Domains.objects.create(
-                domain=domain,
-                type=type,
-                category=category,
-            )
+            # если необходимо добавить домен, то
+            # Domains.objects.create(
+            #     domain=domain,
+            #     type=type,
+            #     category=category,
+            # )
+
+            # доподняем информацию о домене
+            d = Domains.objects.get(
+                domain=domain)
+            d.type=type
+            d.category=category
+            d.save()
 
 domain_genre()

@@ -39,13 +39,18 @@ def create_vectors(clicks, day_parts, teams):
     for team in teams:
         for day_part in day_parts:
             for n_click in clicks:
-                thousand = Teams.objects.filter(team=team).values_list('thousand')[0][0]
+                thousands = [i[0] for i in Teams.objects.filter(team=team).values_list('thousand')]
+                vectors_number = round(sum(thousands) / len(thousands) / n_click * 1000)
                 names = [name[0] for name in Teams.objects.filter(team=team).values_list('username')]
-                key = {'team': team, 'number_parts_per_day': day_part, 'clicks': n_click, 'thousand': thousand,
+
+                key = {'team': team,
+                       'number_parts_per_day': day_part,
+                       'clicks': n_click,
+                       'num_vectors': vectors_number,
                        'users_quantity': len(names)}
                 if Collections.objects.filter(**key):
                     col = Collections.objects.get(**key)
-                    VectorsOneVersion1.objects.filter(collection=col).delete()
+                  #  VectorsOneVersion1.objects.filter(collection=col).delete()
                 else:
                     col = Collections.objects.create(**key)
                     col.save()
@@ -53,15 +58,15 @@ def create_vectors(clicks, day_parts, teams):
                 if not col in array_coll:
                     array_coll.append(col)
 
-                data = (thousand, int(thousand/0.7))
+                data = (round(sum(thousands) / len(thousands)), int(sum(thousands) / len(thousands)/0.7))
                 CreateVectorsDB(data, names, col)
     msg = "Завершено. Время выполнения: %s seconds ---" % (time.time() - start_time)
     print(msg)
-    train(array_coll, ['5 best patterns set'], ['rf'])
+    #train(array_coll, ['5 best patterns set'], ['rf'])
 
 
 
-def train(collections, list_permission, algorithms):
+def train(collections, list_permission, algorithms, ):
     """
     В зависимости от режима запускает или формирование выборок, или запускает МО.
     """
@@ -94,7 +99,7 @@ def train(collections, list_permission, algorithms):
 
         else:
             if any([True if i in classification_algorithms else False for i in algorithms]):
-                classification(collection, list_permission, algorithms)
+                classification(collection, list_permission, algorithms, 1)
             if any([True if i in regression_algorithms else False for i in algorithms]):
                 regression(collection, list_permission, algorithms)
     msg = "Завершено. Время выполнения: %s seconds ---" % (time.time() - start_time)

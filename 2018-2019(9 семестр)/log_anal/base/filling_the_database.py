@@ -50,7 +50,7 @@ class Filling(object):
         num_in_thousand = 0
         for line_d in data:
             try:
-                line = line_d[:len(line_d) - 2]
+                line = line_d.split('\n')[0]
                 line = line.split('\t')
                 day = dd.strptime(line[0], '%d.%m.%Y')
                 day = day.replace(tzinfo=timezone('UTC'))
@@ -61,7 +61,13 @@ class Filling(object):
                 # фиксируем начало работы системы
                 if line[3] == 'start':
                     seance += 1
-                    p = Log(day=day, time=time1, local_time=local_time, username=self.name, seance=seance, start_computer=True)
+                    click = Clicks.objects.create(
+                        time=time1,
+                        url=Domains.objects.all()[0],
+                        domain=URLs.objects.all()[0],
+                    )
+                    click.save()
+                    p = Log(day=day, click=click, local_time=local_time, username=self.name, seance=seance, start_computer=True)
                     p.save()
                     last_active_time = time1
                     continue
