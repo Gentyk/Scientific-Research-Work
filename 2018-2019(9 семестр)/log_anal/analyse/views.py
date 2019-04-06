@@ -27,24 +27,41 @@ def get_selection(request, full_array):
     return find_array
 
 class InfoView(View):
-    def get(self, request, *args, **kwargs):
+    """
+    Домашняя страница
+    """
+    def get(self, request):
         """
-        Вывод общей информации
+        Горячие клавиши для перехода на другие ресурсы
         """
         return render(request, 'analyse/info.html')
 
+
+class BaseView(View):
+    def get(self, request, *args, **kwargs):
+        """
+        Вывод общей информации о всех таблицах
+        """
+        result = []
+        result.append({'name': 'URLs', 'count': URLs.objects.all().count()})
+        result.append({'name': 'Domains', 'count': Domains.objects.all().count()})
+        result.append({'name': 'logs', 'count': Log.objects.all().count()})
+        result.append({'name': 'bigramms', 'count': Bigrams.objects.all().count()})
+        result.append({'name': 'trigramms', 'count': Trigrams.objects.all().count()})
+        context = {'tables_list': result}
+        return render(request, 'analyse/base_status.html', context)
+
+
 class UsersView(View):
     """
-    Находит частные штучкки пользователей и заносит их в базу данных. По требованию достает инфу о каждом доступном
+    Находит частные штучки пользователей и заносит их в базу данных. По требованию достает инфу о каждом доступном
     пользователе.
     """
-
     def get(self, request, *args, **kwargs):
         """
         Вывод общей информации о каждом пользователе
         """
         # соберем имена всех пользователей из логов и БД
-        names = []
         log_names = [f.split('.')[0] for f in listdir('logs') if isfile(join('logs', f))]
         base_usernames = [name[0] for name in Log.objects.all().distinct('username').values_list("username")]
         analyse_usernames = [name[0] for name in Teams.objects.all().values_list("username")]
@@ -94,31 +111,6 @@ class UsersView(View):
         t = threading.Thread(target=filling)
         t.start()
         return HttpResponse("success")
-
-
-class UserView(View):
-    """
-    Выдача информации и изменение каких-либо данных одного определенного пользователя
-    """
-    def get(self, request, *args, **kwargs):
-        """
-        Вывод общей информации об определенном пользователе
-        """
-        return render(request, 'analyse/user.html')
-
-class BaseView(View):
-    def get(self, request, *args, **kwargs):
-        """
-        Вывод общей информации о всех таблицах
-        """
-        result = []
-        result.append({'name': 'URLs', 'count': URLs.objects.all().count()})
-        result.append({'name': 'Domains', 'count': Domains.objects.all().count()})
-        result.append({'name': 'logs', 'count': Log.objects.all().count()})
-        result.append({'name': 'bigramms', 'count': Bigrams.objects.all().count()})
-        result.append({'name': 'trigramms', 'count': Trigrams.objects.all().count()})
-        context = {'tables_list': result}
-        return render(request, 'analyse/base_status.html', context)
 
 
 class AnalyseView(View):

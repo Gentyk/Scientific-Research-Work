@@ -3,8 +3,7 @@ from django.conf.urls import url
 from analyse.views import *
 
 urlpatterns = [
-    url('info/$', InfoView.as_view()),
-    url('user/$', UserView.as_view()),
+    url('info/$', InfoView.as_view()),  # горячие клавиши для перехода на другие страницы
     url('users/$', UsersView.as_view(), name="users"),
     url('base/$', BaseView.as_view(), name="database"),
     url('analyse/$', AnalyseView.as_view(), name="analyse"),

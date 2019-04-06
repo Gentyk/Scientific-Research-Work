@@ -97,14 +97,14 @@ def regression(collection, pattern_list, algorithms):
 
 
 
-def classification(collection, pattern_list, algorithms):
+def classification(collection, pattern_list, algorithms, forgivable_mistakes=0):
     # данные для обучения
     patterns = pattern_list.copy()
     patterns.append('username')
     print(patterns)
 
     fil = {'collection': collection, 'type': 1}
-    X, Y = get_arrays(fil, patterns)
+    X, Y, last = get_arrays(fil, patterns, 1)
     n = len(Y)
     print('Длина вектора' + str(len(X[0])))
 
@@ -115,27 +115,26 @@ def classification(collection, pattern_list, algorithms):
 
     # данные для тестирования
     fil = {'collection': collection, 'type': 2}
-    test_X, test_Y = get_arrays(fil, patterns)
+    test_X, test_Y, last = get_arrays(fil, patterns, 1)
 
     n_test = len(test_Y)
     test_X = scaler.transform(test_X)
 
     names = [i[0] for i in VectorsOneVersion1.objects.filter(collection=collection).distinct('username').values_list('username')]
+    del names[names.index('ys')]
+    del names[names.index('mk')]
     # данные для определения FAR и FRR
     n_login_attempt = {name: 0 for name in names}  # сколько раз легитимный пользователь пытался войти
     for name in test_Y:
         n_login_attempt[name] += 1
 
-    #print(n_login_attempt)
-
-    # несколько алгоритмов МО
+    # несколько алгоритмов МО1
     ml = {}
     for key, value in classification_algorithms.items():
         if key in algorithms:
             ml[key] = value
 
-    #with open(path + "\\otch.txt", 'w') as f:
-    #f.write(str(names) + " " + str(n))
+    active_users = [test_Y[i] for i in range(forgivable_mistakes)]
     # обучение, тестирование, вывод на экран
     for name_alg, algorithm in ml.items():
         #f.write('\n' + name_alg)
@@ -149,7 +148,15 @@ def classification(collection, pattern_list, algorithms):
         FRR = {name: 0 for name in names}  # случайно заблокировали владельца
 
         good = 0
+        # for j in test_Y:
+        #     print(j)
+
         for i in range(n_test):
+            if result[i] != test_Y[i]:
+                if test_Y[i] in active_users:
+                    active_users = active_users[1:] + [result[i]]
+                    result[i] = test_Y[i]
+
             if result[i] == test_Y[i]:
                 good += 1
             for name in names:
@@ -163,14 +170,14 @@ def classification(collection, pattern_list, algorithms):
         summ_FAR = 0
         summ_FRR = 0
         for name in names:
-            #f.write('\n' + name + " FAR:" + str(FAR[name] / n_test))
-            #f.write('\n' + name + " FRR:" + str(FRR[name] / n_login_attempt[name]))
+            print('\n' + name + " FAR:" + str(FAR[name] / n_test))
+            print('\n' + name + " FRR:" + str(FRR[name] / n_login_attempt[name]))
             summ_FAR += FAR[name] / n_test
             summ_FRR += FRR[name] / n_login_attempt[name]
         middleFAR = summ_FAR / len(names)
         middleFRR = summ_FRR / len(names)
-        #print("\nсредний FAR:" + str(middleFAR))
-        #print("\nсредний FRR:" + str(middleFRR))
+        print("\nсредний FAR:" + str(middleFAR))
+        print("\nсредний FRR:" + str(middleFRR))
         #f.write("\nсредний FAR:" + str(middleFAR))
         #f.write("\nсредний FRR:" + str(middleFRR))
         print(pattern_list)
@@ -201,10 +208,11 @@ def get_arrays(criterion, patterns, add_field=0):
                     l_X.extend(obj)
             else:
                 l_X.append(obj)
-        Y.append(line[-1])
-        X.append(l_X.copy())
-        if add_field:
-            fields.append(line[-1 - add_field])
+        if line[-1] != 'ys' or line[-1] != 'mk':
+            Y.append(line[-1])
+            X.append(l_X.copy())
+            if add_field:
+                fields.append(line[-1 - add_field])
     X = np.array(X)
     Y = np.array(Y)
     if add_field:

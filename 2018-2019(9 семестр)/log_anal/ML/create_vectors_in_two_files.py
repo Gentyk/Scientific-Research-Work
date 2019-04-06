@@ -1,13 +1,6 @@
-import csv
 from datetime import timedelta
-import json
-import numpy as np
-import random
-import requests
-import xlsxwriter
-import vk_api
 
-from analyse.models import Log, Teams, VectorsOneVersion1
+from analyse.models import Log, Teams, VectorsOneVersion1, VectorsOneVersion2
 
 WIDTH = 7
 HEIGHT = 5
@@ -46,9 +39,12 @@ class CreateVectorsDB(object):
         self.dom_trigrams_user = {}
         self.user_flag = {}
 
+        self.vectors_num = 0
+
         self.run()
 
     def run(self):
+        # выкачиваем персональные данные о пользователе в каждой команде
         for name in self.names:
             self.user_flag[name] = False
             self.up_data_from_db(name)
@@ -57,6 +53,12 @@ class CreateVectorsDB(object):
         for i in self.names:
             print('user ' + i + ' start writing training data')
             self.create_vectors(i, type=1)
+
+            # Если появится желание дополнять недостающие вектора
+            #vectors_quantity = VectorsOneVersion1.objects.filter(collection=self.collection, type=1, username=i).count()
+            # necessary_vectors_quantity = self.collection.num_vectors
+            # if vectors_quantity < necessary_vectors_quantity:
+            #     self.add_vectors(i, vectors_quantity, necessary_vectors_quantity)
             print('user ' + i + ' success writing training data')
 
         # выборка для тестирования
@@ -77,16 +79,43 @@ class CreateVectorsDB(object):
         self.url_trigrams = list(set(self.url_trigrams + [tuple(k) for k in log.frequent_tri_urls]))
         self.dom_trigrams = list(set(self.dom_trigrams + [tuple(k) for k in log.frequent_tri_domains]))
 
+
+    def add_vectors(self, name, vectors_quantity, necessary_vectors_quantity):
+        """
+        Увеличивает количество векторов с vectors_quantity до необходимых necessary_vectors_quantity для пользователя
+        name.
+        """
+        times = necessary_vectors_quantity // vectors_quantity - 1
+        array = VectorsOneVersion1.objects.filter(collection=self.collection, type=1, username=name).values()
+        for i in range(times):
+            for j in array:
+                line = j.copy()
+                del line['id']
+                new = VectorsOneVersion1.objects.create(**line)
+                new.save()
+        difference = necessary_vectors_quantity - VectorsOneVersion1.objects.filter(collection=self.collection, type=1, username=name).count()
+        i = 0
+        for j in array:
+            i += 1
+            line = j.copy()
+            del line['id']
+            new = VectorsOneVersion1.objects.create(**line)
+            new.save()
+            if i >= difference:
+                break
+
     def create_vectors(self, name, type):
         size = 0
         log = Log.objects.filter(username=name)
         if type == 1:
             # обучение
-            all_v = log.filter(thousand__lt=self.training)
+            #all_v = log.filter(thousand__lt=self.training)
+
+            all_v = log.filter(click__time__lt=(log.earliest('click__time').click.time + timedelta(days=7 * 2)))
             size = all_v.count()
         elif type == 2:
             # тестирование
-            all_v = log.filter(thousand__gte=self.training).filter(thousand__lt=self.period)
+            all_v = log.filter(click__time__gte=(log.earliest('click__time').click.time + timedelta(days=7 * 2))).filter(click__time__lt=(log.earliest('click__time').click.time + timedelta(days=7 * 3)))
             size = all_v.count()
         all_fields = ['id', 'click__domain__domain', 'click__domain__category', 'click__domain__type', 'click__url__url',
                       'click__time', 'x1_window_coordinates', 'x2_window_coordinates', 'x_cursor_coordinates',
@@ -97,7 +126,7 @@ class CreateVectorsDB(object):
         num = 0
         all_types = [i[0] for i in Log.objects.distinct('click__domain__type').values_list('click__domain__type')]
         all_categories = [i[0] for i in Log.objects.distinct('click__domain__category').values_list('click__domain__category')]
-        for ind in range(0, size - self.n_click, self.n_click):
+        for ind in range(0, size - self.n_click, 2):
             num += 1
             res = {'collection': self.collection, 'username': name, 'type': type}
             values = all_values[ind: ind + self.n_click]
@@ -183,9 +212,9 @@ class CreateVectorsDB(object):
                       if abs(times[i+1]-times[i]) >= timedelta(seconds=300) and abs(times[i+1]-times[i]) < timedelta(seconds=600)]
             pauses3 = [abs(times[i+1]-times[i]).seconds for i in range(len(times)-1)
                       if abs(times[i+1]-times[i]) >= timedelta(seconds=600)]
-            res['middle_pause'] = sum(pauses) / len(pauses)
-            res['middle_pause2'] = sum(pauses2) / len(pauses)
-            res['middle_pause3'] = sum(pauses3) / len(pauses)
+            res['middle_pause'] = (sum(pauses) / len(pauses) if len(pauses) != 0 else 0)
+            res['middle_pause2'] = (sum(pauses2) / len(pauses2) if len(pauses2) != 0 else 0)
+            res['middle_pause3'] = (sum(pauses3) / len(pauses3) if len(pauses3) != 0 else 0)
             res['quantity_middle_pause'] = len(pauses)
             res['quantity_middle_pause2'] = len(pauses2)
             res['quantity_middle_pause3'] = len(pauses3)
@@ -263,7 +292,6 @@ class CreateVectorsDB(object):
 
             new = VectorsOneVersion1.objects.create(**res)
             new.save()
-        #print(num)
 
     def get_info(self, field_name, type_perm, all_type_objs, values):
         res = {field_name: []}

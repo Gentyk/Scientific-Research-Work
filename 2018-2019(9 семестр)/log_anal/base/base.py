@@ -50,7 +50,7 @@ def create_vectors(clicks, day_parts, teams):
                        'users_quantity': len(names)}
                 if Collections.objects.filter(**key):
                     col = Collections.objects.get(**key)
-                  #  VectorsOneVersion1.objects.filter(collection=col).delete()
+                    VectorsOneVersion1.objects.filter(collection=col).delete()
                 else:
                     col = Collections.objects.create(**key)
                     col.save()
