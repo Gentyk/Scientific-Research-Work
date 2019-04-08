@@ -20,7 +20,7 @@ from sklearn import (manifold, datasets, decomposition, ensemble,
                      discriminant_analysis, random_projection)
 
 
-def anomaly(collection):#exit(), pattern_list):
+def SNE(collection):#exit(), pattern_list):
     # данные для обучения
     patterns = [
        # 'days', 'day_parts',

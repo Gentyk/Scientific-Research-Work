@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import time
 
+from sklearn.externals import joblib
 from sklearn.preprocessing import StandardScaler
 
 from analyse.models import ML, VectorsOneVersion1
@@ -95,17 +96,14 @@ def regression(collection, pattern_list, algorithms):
             f.write('good aver=' + str(aver_g)+"\n min:" + str(min_g)+"\n max:" + str(max_g))
             f.write('\nbad aver=' + str(aver_b)+"\n min:" + str(min_b)+"\n max:" + str(max_b))
 
-
-
-def classification(collection, pattern_list, algorithms, forgivable_mistakes=0):
+def classification(collection, pattern_list, algorithms, forgivable_mistakes=0, filename=None, exclude = []):
     # данные для обучения
     patterns = pattern_list.copy()
     patterns.append('username')
     print(patterns)
-
+    #exclude = ['ys', 'mk']
     fil = {'collection': collection, 'type': 1}
-    X, Y, last = get_arrays(fil, patterns, 1)
-    n = len(Y)
+    X, Y, last = get_arrays(fil, patterns, 1, exclude)
     print('Длина вектора' + str(len(X[0])))
 
     # нормализация
@@ -115,14 +113,13 @@ def classification(collection, pattern_list, algorithms, forgivable_mistakes=0):
 
     # данные для тестирования
     fil = {'collection': collection, 'type': 2}
-    test_X, test_Y, last = get_arrays(fil, patterns, 1)
+    test_X, test_Y, last = get_arrays(fil, patterns, 1, exclude)
 
     n_test = len(test_Y)
     test_X = scaler.transform(test_X)
 
-    names = [i[0] for i in VectorsOneVersion1.objects.filter(collection=collection).distinct('username').values_list('username')]
-    del names[names.index('ys')]
-    del names[names.index('mk')]
+    names = [i[0]  for i in VectorsOneVersion1.objects.filter(collection=collection).distinct('username').values_list('username') if not i[0] in exclude]
+
     # данные для определения FAR и FRR
     n_login_attempt = {name: 0 for name in names}  # сколько раз легитимный пользователь пытался войти
     for name in test_Y:
@@ -137,10 +134,10 @@ def classification(collection, pattern_list, algorithms, forgivable_mistakes=0):
     active_users = [test_Y[i] for i in range(forgivable_mistakes)]
     # обучение, тестирование, вывод на экран
     for name_alg, algorithm in ml.items():
-        #f.write('\n' + name_alg)
-        #print('\n' + name_alg)
         a = algorithm
         a.fit(X, Y)
+        if filename:
+            joblib.dump(a, filename)
         result = a.predict(test_X)
 
         # проверка результатов
@@ -148,9 +145,6 @@ def classification(collection, pattern_list, algorithms, forgivable_mistakes=0):
         FRR = {name: 0 for name in names}  # случайно заблокировали владельца
 
         good = 0
-        # for j in test_Y:
-        #     print(j)
-
         for i in range(n_test):
             if result[i] != test_Y[i]:
                 if test_Y[i] in active_users:
@@ -190,29 +184,31 @@ def classification(collection, pattern_list, algorithms, forgivable_mistakes=0):
             algorithm=name_alg,
         )
 
-def get_arrays(criterion, patterns, add_field=0):
+def get_arrays(criterion, patterns, add_field=0, exclude=[]):
     mass = VectorsOneVersion1.objects.filter(**criterion).values_list(*patterns)
     X = []
     Y = []
     if add_field:
         fields = []
     for line in mass:
-        l_X = []
-        for obj in line[:len(line) - 1 - add_field]:
-            if isinstance(obj, list):
-                # для карты кликов
-                if isinstance(obj[0], list):
-                    for j in obj:
-                        l_X.extend(j)
+        if not line[-1] in exclude:
+            l_X = []
+            for obj in line[:len(line) - 1 - add_field]:
+                if isinstance(obj, list):
+                    # для карты кликов
+                    if isinstance(obj[0], list):
+                        for j in obj:
+                            l_X.extend(j)
+                    else:
+                        l_X.extend(obj)
                 else:
-                    l_X.extend(obj)
-            else:
-                l_X.append(obj)
-        if line[-1] != 'ys' or line[-1] != 'mk':
+                    l_X.append(obj)
+
             Y.append(line[-1])
             X.append(l_X.copy())
             if add_field:
                 fields.append(line[-1 - add_field])
+
     X = np.array(X)
     Y = np.array(Y)
     if add_field:
@@ -306,7 +302,7 @@ def combine_train(collections):
         patterns = patterns_list.copy()
         patterns.append('username')
         fil = {'collection': collection, 'type': 1}
-        X, Y = get_arrays(fil, patterns)
+        X, Y, fuck = get_arrays(fil, patterns, 1)
         scaler = StandardScaler()
         scaler.fit(X)
         X = scaler.transform(X)
@@ -317,7 +313,7 @@ def combine_train(collections):
         patterns = patterns_list.copy()
         patterns.extend(['last_click','username'])
         fil = {'collection': collection, 'type': 2}
-        a1, b, c = get_combine_arrays(fil, patterns)
+        a1, b, c = get_arrays(fil, patterns, 1)
         test_X, last_click_list = [], []
         for i in range(len(c)):
             if c[i] in main_last_click_list:
