@@ -1,0 +1,1 @@
+﻿1_2 - обычная клиссификация на признаках pattern = ['days', 'day_parts', 'middle_pause', 'middle_pause2', 'middle_pause3', 'start_comp_pause', 'urls', 'url_freq_pause', 'url_maps', 'domains',  'domain_maps', 'domain_type'] с количеством кликов 2300 для всех
