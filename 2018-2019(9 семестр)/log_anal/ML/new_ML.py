@@ -10,11 +10,10 @@ from analyse.models import ML, VectorsOneVersion1, Collections
 from base.constants import classification_algorithms, regression_algorithms
 
 class Classification(object):
-    def __init__(self, collection, pattern_list, algorithm, num_train_vectors=1600, forgivable_mistakes=0, filename=None, exclude = []):
+    def __init__(self, collection, pattern_list, algorithm, num_train_vectors=1600, filename=None, exclude=[]):
         self.collection = collection
         self.pattern_list = pattern_list
         self.algorithm = algorithm
-        self.forgivable_mistakes = forgivable_mistakes
         self.filename = filename
         self.exclude = exclude
         self.num_train_vectors = num_train_vectors
@@ -25,6 +24,8 @@ class Classification(object):
         #exclude = ['ys', 'mk']
         fil = {'collection': self.collection, 'type': 1}
         X, Y = self.get_arrays_norma(fil, self.pattern_list, self.exclude, self.num_train_vectors)
+        X = np.array(X)
+        Y = np.array(Y)
         print('Длина вектора' + str(len(X[0])))
         print('Количество векторов' + str(len(X)))
         #self.check_vectors_len(X,Y)
@@ -43,22 +44,106 @@ class Classification(object):
         if self.filename:
             joblib.dump(a, self.filename)
             print('машина сохранена')
+        X = None
+        Y = None
+        ClassificationTest(self.collection, self.pattern_list, self.algorithm, scaler, a, exclude=self.exclude, num_train_vectors=self.num_train_vectors)
 
-        self.test(scaler, a)
+    def check_vectors_len(self, X, Y):
+        n = len(X[0])
+        for i in range(len(X)):
+            try:
+                if len(X[i]) != n:
+                    print(Y[i])
+                    print(str(n)+ ' ' + str(len(X[i])))
+            except:
+                print(Y[i])
+                print(X[i])
 
-    def test(self, scaler=None, alg=None, file=None):
-        if file:
-            scaler = joblib.load('./algorithms/' + file + 'scaler.pkl')
-            alg = joblib.load('./algorithms/' + file + '.pkl')
-        patterns = self.pattern_list.copy()
-        patterns.append('username')
+    def get_arrays_norma(self, criterion, patterns, exclude=[], Norma=None):
+        X = []
+        Y = []
+        users = [name[0] for name in
+                 VectorsOneVersion1.objects.filter(**criterion).distinct('username').values_list('username') if
+                 not name[0] in exclude]
+        for user in users:
+            print(user)
+            n = VectorsOneVersion1.objects.filter(**criterion).filter(username=user).count()
+            if n < Norma:
+                mass = [self.get_line(line) for line in VectorsOneVersion1.objects.filter(**criterion).filter(username=user).values_list(*patterns)]
+                X.extend(self.add_vectors(mass, n, Norma))
+                mass = None
+                Y.extend([user for i in range(Norma)])
+            elif n > Norma:
+                step = n // Norma
+                X.extend([self.get_line(line) for line in VectorsOneVersion1.objects.filter(**criterion).order_by('-id').filter(username=user).values_list(*patterns)[:n:step][:Norma]])
+                Y.extend([user for i in range(Norma)])
+            else:
+                X.extend([self.get_line(line) for line in
+                          VectorsOneVersion1.objects.filter(**criterion).order_by('-id').filter(
+                              username=user).values_list(*patterns)])
+                Y.extend([user for i in range(Norma)])
+        return X, Y
+
+    def get_line(self, line):
+        l_X = []
+        for obj in line:
+            if isinstance(obj, list):
+                # для карты кликов
+                if isinstance(obj[0], list):
+                    for j in obj:
+                        l_X.extend(j)
+                else:
+                    l_X.extend(obj)
+            else:
+                l_X.append(obj)
+        return l_X
+
+    def add_vectors(self, array, vectors_quantity, necessary_vectors_quantity):
+        """
+        Увеличивает количество векторов с vectors_quantity до необходимых necessary_vectors_quantity для пользователя
+        name.
+        """
+        times = necessary_vectors_quantity // vectors_quantity
+        new_array = array * times
+        difference = necessary_vectors_quantity - (vectors_quantity * (times))
+        new_array.extend(array[:difference])
+        print(str(necessary_vectors_quantity) + ' ' +str(len(new_array)))
+        return new_array
+
+    def reduce_vectors_number(self, array, vectors_quantity, necessary_vectors_quantity):
+        new_array = []
+        step = vectors_quantity // necessary_vectors_quantity
+        for i in range(necessary_vectors_quantity):
+            new_array.append(array[vectors_quantity - i * step - 1])
+        return new_array
+
+
+class ClassificationTest(Classification):
+    def __init__(self, collection, pattern_list, algorithm, scaler=None, alg=None, file=None, mistakes=0, exclude=[], num_train_vectors=None):
+        self.collection = collection
+        self.pattern_list = pattern_list
+        self.algorithm = algorithm
+        self.forgivable_mistakes = mistakes
+        self.scaler = scaler
+        self.alg = alg
+        self.file = file
+        self.exclude = exclude
+        self.num_train_vectors=num_train_vectors
+        self.test()
+
+    def test(self):
+        if self.file:
+            self.scaler = joblib.load('./algorithms/' + self.file + 'scaler.pkl')
+            self.alg = joblib.load('./algorithms/' + self.file + '.pkl')
 
         # данные для тестирования
         fil = {'collection': self.collection, 'type': 2}
-        test_X, test_Y = self.get_arrays_order(fil, patterns, self.exclude)
+        test_X, test_Y = self.get_arrays_order_norma(fil, self.pattern_list, self.exclude)
+        test_X = np.array(test_X)
+        test_Y = np.array(test_Y)
         n_test = len(test_Y)
 
-        test_X = scaler.transform(test_X)
+        test_X = self.scaler.transform(test_X)
         names = [i[0] for i in
                  VectorsOneVersion1.objects.filter(collection=self.collection).distinct('username').values_list(
                      'username') if not i[0] in self.exclude]
@@ -66,7 +151,7 @@ class Classification(object):
         for name in test_Y:
             n_login_attempt[name] += 1
         active_users = [test_Y[i] for i in range(self.forgivable_mistakes)]
-        result = alg.predict(test_X)
+        result = self.alg.predict(test_X)
 
         # проверка результатов
         FAR = {name: 0 for name in names}  # ложное положительное решение
@@ -109,78 +194,6 @@ class Classification(object):
             algorithm=self.algorithm,
         )
 
-    def check_vectors_len(self, X, Y):
-        n = len(X[0])
-        for i in range(len(X)):
-            try:
-                if len(X[i]) != n:
-                    print(Y[i])
-                    print(str(n)+ ' ' + str(len(X[i])))
-            except:
-                print(Y[i])
-                print(X[i])
-
-
-    def get_arrays_norma(self, criterion, patterns, exclude=[], Norma=None):
-        X = []
-        Y = []
-        users = [name[0] for name in
-                 VectorsOneVersion1.objects.filter(**criterion).distinct('username').values_list('username') if
-                 not name[0] in exclude]
-        for user in users:
-            print(user)
-            n = VectorsOneVersion1.objects.filter(**criterion).filter(username=user).count()
-            if n < Norma:
-                mass = [self.get_line(line) for line in VectorsOneVersion1.objects.filter(**criterion).filter(username=user).values_list(*patterns)]
-                X.extend(self.add_vectors(mass, n, Norma))
-                mass = None
-                Y.extend([user for i in range(Norma)])
-            elif n > Norma:
-                X.extend([self.get_line(line) for line in VectorsOneVersion1.objects.filter(**criterion).order_by('-id').filter(username=user).values_list(*patterns)[:Norma]])
-                Y.extend([user for i in range(Norma)])
-            else:
-                X.extend([self.get_line(line) for line in
-                          VectorsOneVersion1.objects.filter(**criterion).order_by('-id').filter(
-                              username=user).values_list(*patterns)])
-                Y.extend([user for i in range(Norma)])
-        X = np.array(X)
-        Y = np.array(Y)
-        return X, Y
-
-
-    def get_line(self, line):
-        l_X = []
-        for obj in line:
-            if isinstance(obj, list):
-                # для карты кликов
-                if isinstance(obj[0], list):
-                    for j in obj:
-                        l_X.extend(j)
-                else:
-                    l_X.extend(obj)
-            else:
-                l_X.append(obj)
-        return l_X
-
-    def add_vectors(self, array, vectors_quantity, necessary_vectors_quantity):
-        """
-        Увеличивает количество векторов с vectors_quantity до необходимых necessary_vectors_quantity для пользователя
-        name.
-        """
-        times = necessary_vectors_quantity // vectors_quantity
-        new_array = array * times
-        difference = necessary_vectors_quantity - (vectors_quantity * (times))
-        new_array.extend(array[:difference])
-        print(str(necessary_vectors_quantity) + ' ' +str(len(new_array)))
-        return new_array
-
-    def reduce_vectors_number(self, array, vectors_quantity, necessary_vectors_quantity):
-        new_array = []
-        step = vectors_quantity // necessary_vectors_quantity
-        for i in range(necessary_vectors_quantity):
-            new_array.append(array[vectors_quantity - i * step - 1])
-        return new_array
-
     def get_arrays_order(self, criterion, patterns, exclude=[]):
         mass = VectorsOneVersion1.objects.order_by('id').filter(**criterion).values_list(*patterns)
         print(patterns)
@@ -203,6 +216,24 @@ class Classification(object):
                 X.append(l_X.copy())
         X = np.array(X)#, dtype=object)
         Y = np.array(Y)#, dtype=object)
+        return X, Y
+
+    def get_arrays_order_norma(self, criterion, patterns, exclude=[]):
+        X = []
+        Y = []
+        users = [name[0] for name in
+                 VectorsOneVersion1.objects.filter(**criterion).distinct('username').values_list('username') if
+                 not name[0] in exclude]
+        for user in users:
+            print(user)
+            n = VectorsOneVersion1.objects.filter(**criterion).filter(username=user).count()
+            if self.num_train_vectors and int(self.num_train_vectors*0.3) < VectorsOneVersion1.objects.filter(**criterion).filter(username=user).count():
+                n = int(self.num_train_vectors*0.3)
+            X.extend([self.get_line(line) for line in VectorsOneVersion1.objects.filter(**criterion).filter(
+                          username=user).order_by('id').values_list(*patterns)][:n])
+            Y.extend([user for i in range(n)])
+            if len(X) != len(Y):
+                break
         return X, Y
 
 
