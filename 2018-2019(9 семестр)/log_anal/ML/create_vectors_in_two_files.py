@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from analyse.models import Log, Teams, VectorsOneVersion1, VectorsOneVersion2
+from analyse.models import Log, Teams, VectorsOneVersion1, VectorsOneVersion2, VectorsOneVersion3, VectorsOneVersion4
 
 WIDTH = 7
 HEIGHT = 5
@@ -370,7 +370,7 @@ class CreateUserVectors(CreateVectorsDB):
 
     def run(self):
         # выкачиваем персональные данные о пользователе в каждой команде
-        all_names = [name[0] for name in VectorsOneVersion1.objects.only('username').distinct('username').values_list('username')]
+        all_names = [name[0] for name in Teams.objects.filter(team=self.team_name).distinct('username').values_list('username')]
         all_names.extend(self.names)
         for name in all_names:
             self.user_flag[name] = False
@@ -412,11 +412,11 @@ class CreateUserVectors(CreateVectorsDB):
         log = Log.objects.filter(username=name)
         if type == 1:
             # обучение
-            all_v = log.filter(click__time__lt=(log.earliest('click__time').click.time + timedelta(days=7 * 2)))
+            all_v = log.filter(click__time__lt=(log.earliest('click__time').click.time + timedelta(days=7 * 4)))
             size = all_v.count()
         elif type == 2:
             # тестирование
-            all_v = log.filter(click__time__gte=(log.earliest('click__time').click.time + timedelta(days=7 * 2))).filter(click__time__lt=(log.earliest('click__time').click.time + timedelta(days=7 * 3)))
+            all_v = log.filter(click__time__gte=(log.earliest('click__time').click.time + timedelta(days=7 * 4))).filter(click__time__lt=(log.earliest('click__time').click.time + timedelta(days=7 * 6)))
             size = all_v.count()
         all_fields = ['id', 'click__domain__domain', 'click__domain__category', 'click__domain__type', 'click__url__url',
                       'click__time', 'x1_window_coordinates', 'x2_window_coordinates', 'x_cursor_coordinates',
@@ -591,5 +591,5 @@ class CreateUserVectors(CreateVectorsDB):
             res.update(self.get_info('domain_type', 'click__domain__type', all_types,values))
             res.update(self.get_info('domain_categories', 'click__domain__category', all_categories, values))
 
-            new = VectorsOneVersion1.objects.create(**res)
+            new = VectorsOneVersion3.objects.create(**res)
             new.save()

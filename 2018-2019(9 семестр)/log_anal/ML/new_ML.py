@@ -6,7 +6,7 @@ import time
 from sklearn.externals import joblib
 from sklearn.preprocessing import StandardScaler
 
-from analyse.models import ML, VectorsOneVersion1, Collections
+from analyse.models import ML, VectorsOneVersion1, Collections, VectorsOneVersion2
 from base.constants import classification_algorithms, regression_algorithms
 
 class Classification(object):
@@ -21,7 +21,6 @@ class Classification(object):
     def train(self):
         # данные для обучения
         print(self.pattern_list)
-        #exclude = ['ys', 'mk']
         fil = {'collection': self.collection, 'type': 1}
         X, Y = self.get_arrays_norma(fil, self.pattern_list, self.exclude, self.num_train_vectors)
         X = np.array(X)
@@ -34,15 +33,14 @@ class Classification(object):
         scaler.fit(X)
         X = scaler.transform(X)
         if self.filename:
-            scaler_name = self.filename.split('.')
-            scaler_name = '.' + scaler_name[1] + 'scaler.' + scaler_name[2]
+            scaler_name = './algorithms/' + self.filename + 'scaler.pkl'
             joblib.dump(scaler, scaler_name)
             print('машина нормализации сохранена')
         print('начало обучения')
         a = classification_algorithms[self.algorithm]
         a.fit(X, Y)
         if self.filename:
-            joblib.dump(a, self.filename)
+            joblib.dump(a, './algorithms/' + self.filename + '.pkl')
             print('машина сохранена')
         X = None
         Y = None
@@ -63,23 +61,23 @@ class Classification(object):
         X = []
         Y = []
         users = [name[0] for name in
-                 VectorsOneVersion1.objects.filter(**criterion).distinct('username').values_list('username') if
+                 VectorsOneVersion2.objects.filter(**criterion).distinct('username').values_list('username') if
                  not name[0] in exclude]
         for user in users:
             print(user)
-            n = VectorsOneVersion1.objects.filter(**criterion).filter(username=user).count()
+            n = VectorsOneVersion2.objects.filter(**criterion).filter(username=user).count()
             if n < Norma:
-                mass = [self.get_line(line) for line in VectorsOneVersion1.objects.filter(**criterion).filter(username=user).values_list(*patterns)]
+                mass = [self.get_line(line) for line in VectorsOneVersion2.objects.filter(**criterion).filter(username=user).values_list(*patterns)]
                 X.extend(self.add_vectors(mass, n, Norma))
                 mass = None
                 Y.extend([user for i in range(Norma)])
             elif n > Norma:
                 step = n // Norma
-                X.extend([self.get_line(line) for line in VectorsOneVersion1.objects.filter(**criterion).order_by('-id').filter(username=user).values_list(*patterns)[:n:step][:Norma]])
+                X.extend([self.get_line(line) for line in VectorsOneVersion2.objects.filter(**criterion).order_by('-id').filter(username=user).values_list(*patterns)[:n:step][:Norma]])
                 Y.extend([user for i in range(Norma)])
             else:
                 X.extend([self.get_line(line) for line in
-                          VectorsOneVersion1.objects.filter(**criterion).order_by('-id').filter(
+                          VectorsOneVersion2.objects.filter(**criterion).order_by('-id').filter(
                               username=user).values_list(*patterns)])
                 Y.extend([user for i in range(Norma)])
         return X, Y
@@ -160,7 +158,7 @@ class ClassificationTest(Classification):
         for i in range(n_test):
             if result[i] != test_Y[i]:
                 if test_Y[i] in active_users:
-                    active_users = active_users[1:] + [result[i]]
+
                     result[i] = test_Y[i]
 
             if result[i] == test_Y[i]:
@@ -170,6 +168,7 @@ class ClassificationTest(Classification):
                     FAR[name] += 1
                 if result[i] != name and test_Y[i] == name:
                     FRR[name] += 1
+            active_users = active_users[1:] + [result[i]]
         accuracy = good / n_test
         print('\n' + 'точность:' + str(good / n_test))
         summ_FAR = 0
@@ -222,14 +221,14 @@ class ClassificationTest(Classification):
         X = []
         Y = []
         users = [name[0] for name in
-                 VectorsOneVersion1.objects.filter(**criterion).distinct('username').values_list('username') if
+                 VectorsOneVersion2.objects.filter(**criterion).distinct('username').values_list('username') if
                  not name[0] in exclude]
         for user in users:
             print(user)
-            n = VectorsOneVersion1.objects.filter(**criterion).filter(username=user).count()
-            if self.num_train_vectors and int(self.num_train_vectors*0.3) < VectorsOneVersion1.objects.filter(**criterion).filter(username=user).count():
+            n = VectorsOneVersion2.objects.filter(**criterion).filter(username=user).count()
+            if self.num_train_vectors and int(self.num_train_vectors*0.3) < VectorsOneVersion2.objects.filter(**criterion).filter(username=user).count():
                 n = int(self.num_train_vectors*0.3)
-            X.extend([self.get_line(line) for line in VectorsOneVersion1.objects.filter(**criterion).filter(
+            X.extend([self.get_line(line) for line in VectorsOneVersion2.objects.filter(**criterion).filter(
                           username=user).order_by('id').values_list(*patterns)][:n])
             Y.extend([user for i in range(n)])
             if len(X) != len(Y):

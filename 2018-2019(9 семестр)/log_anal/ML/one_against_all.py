@@ -49,15 +49,14 @@ class OneTrain(Classification):
         scaler.fit(X)
         X = scaler.transform(X)
         if self.filename:
-            scaler_name = self.filename.split('.')
-            scaler_name = '.' + scaler_name[1] + 'scaler.' + scaler_name[2]
+            scaler_name = './algorithms/' + self.filename + 'scaler.pkl'
             joblib.dump(scaler, scaler_name)
             print('машина нормализации сохранена')
         print('начало обучения')
         a = classification_algorithms[self.algorithm]
         a.fit(X, Y)
         if self.filename:
-            joblib.dump(a, self.filename)
+            joblib.dump(a, './algorithms/' + self.filename + '.pkl')
             print('машина сохранена')
         X = None
         Y = None
@@ -115,10 +114,11 @@ class OneTest(ClassificationTest):
         FAR = {name: 0 for name in names}  # ложное положительное решение
         FRR = {name: 0 for name in names}  # случайно заблокировали владельца
         good = 0
+        err = 0
         for i in range(n_test):
             if result[i] != test_Y[i]:
-                if test_Y[i] in active_users:
-                    active_users = active_users[1:] + [result[i]]
+                if 1 in active_users:
+                    err += 1
                     result[i] = test_Y[i]
 
             if result[i] == test_Y[i]:
@@ -128,7 +128,10 @@ class OneTest(ClassificationTest):
                     FAR[name] += 1
                 if result[i] != name and test_Y[i] == name:
                     FRR[name] += 1
+
+            active_users = active_users[1:] + [result[i]]
         accuracy = good / n_test
+        print('количество ошибок' + str(err))
         print('\n' + 'точность:' + str(good / n_test))
         summ_FAR = 0
         summ_FRR = 0
