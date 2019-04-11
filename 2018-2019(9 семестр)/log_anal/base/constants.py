@@ -6,7 +6,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import GradientBoostingRegressor
 
-from analyse.models import VectorsOneVersion1
+from analyse.models import *
 # количество кликов в одном векторе (пользователю предлагается выбрать
 clicks = [
     '5',
@@ -33,5 +33,12 @@ classification_algorithms = {
 
 regression_algorithms = {
         'GradientBoostRegress': GradientBoostingRegressor(),
+}
+
+# ссылки на модели для удобства выбора
+V = {
+    1: VectorsOneVersion1,
+    2: VectorsOneVersion2,
+    3: VectorsOneVersion3,
 }
 

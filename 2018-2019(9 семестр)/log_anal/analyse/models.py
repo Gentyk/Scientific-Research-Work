@@ -247,6 +247,52 @@ class VectorsOneVersion4(models.Model):
 
     last_click = models.IntegerField(default=0) # для синхронизации тестирования пачек из нескольких кликов
 
+class VectorsOneVersion5(models.Model):
+    """
+    Вектора со всеми признаками. Впоследствии мы будем брать только часть этих признаков
+    """
+    collection = models.ForeignKey(Collections, default=None, db_index=True, on_delete=models.CASCADE)
+    username = models.CharField(db_index=True, default="I", max_length=50)
+    type = models.IntegerField(db_index=True, default=0)  # флаг, который говорит - обучающий вектор, или нет
+
+    """
+    Далее перечисляются признаки
+    """
+    days = ArrayField(models.IntegerField(default=0))   # активность по дням недели
+    day_parts = ArrayField(models.IntegerField(default=0))  # активность по времени суток
+    activity_time = ArrayField(models.IntegerField(default=0), default=list)  # совмещенная активность по дням недели и времени суток
+
+    middle_pause = models.FloatField(default=0) # средняя пауза, среди пауз менее 5 мин
+    middle_pause2 = models.FloatField(default=0)  # средняя пауза, среди пауза от 5 мин до 10 мин
+    middle_pause3 = models.FloatField(default=0)  # средняя пауза, среди пауза от 10 мин
+    quantity_middle_pause = models.IntegerField(default=0)
+    quantity_middle_pause2 = models.IntegerField(default=0)
+    quantity_middle_pause3 = models.IntegerField(default=0)
+
+    start_comp_pause = models.FloatField(default=0)
+
+    urls = ArrayField(models.IntegerField(default=0)) # количество переходов на частые url
+    url_freq_pause = ArrayField(models.FloatField(default=0))
+    url_maps = ArrayField(ArrayField(models.IntegerField(default=0)))
+
+    domains = ArrayField(models.IntegerField(default=0))
+    dom_freq_pause = ArrayField(models.FloatField(default=0))
+    domain_maps = ArrayField(ArrayField(models.IntegerField(default=0)))
+
+    url_bi = ArrayField(models.IntegerField(default=0))
+    url_bi_pauses = ArrayField(models.FloatField(default=0))
+    dom_bi = ArrayField(models.IntegerField(default=0))
+    dom_bi_pauses = ArrayField(models.FloatField(default=0))
+    url_tri = ArrayField(models.IntegerField(default=0))
+    url_tri_pauses = ArrayField(models.FloatField(default=0))
+    dom_tri = ArrayField(models.IntegerField(default=0))
+    dom_tri_pauses = ArrayField(models.FloatField(default=0))
+
+    domain_type = ArrayField(models.IntegerField(default=0), default=list)
+    domain_categories = ArrayField(models.IntegerField(default=0), default=list)
+
+    last_click = models.IntegerField(default=0) # для синхронизации тестирования пачек из нескольких кликов
+
 class CopyVectorsOneVersion1(models.Model):
     """
     Вектора со всеми признаками. Впоследствии мы будем брать только часть этих признаков
@@ -346,6 +392,7 @@ class Patterns(models.Model):
     Сюда заносятся лучшие комбинации признаки из таблицы ML
     """
     patterns = ArrayField(models.TextField(default=""))
+    num_group = models.IntegerField(db_index=True, default=1)
 
 
 class ML(models.Model):
@@ -355,3 +402,4 @@ class ML(models.Model):
     middleFAR = models.FloatField(default=0.0)
     middleFRR = models.FloatField(default=0.0)
     algorithm = models.TextField(db_index=True, default="")
+    num_group = models.IntegerField(db_index=True, default=1)

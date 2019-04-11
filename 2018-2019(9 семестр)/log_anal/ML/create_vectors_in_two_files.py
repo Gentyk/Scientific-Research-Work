@@ -1,18 +1,20 @@
 from datetime import timedelta
 
-from analyse.models import Log, Teams, VectorsOneVersion1, VectorsOneVersion2, VectorsOneVersion3, VectorsOneVersion4
+from analyse.models import Log, Teams
+from base.constants import V
 
 WIDTH = 7
 HEIGHT = 5
 
 class CreateVectorsDB(object):
-    def __init__(self, names, collection):
+    def __init__(self, num_vectors_model, names, collection):
         """
         :param names: массив имен всех пользователей
         :param clicks: массив кол-ва кликов в векторе (5/15/30)
         :param day_parts: на сколько частей мы делим день
         :param team_name: имя команды
         """
+        self.vector_model = V[num_vectors_model]
         self.finish_time = None
         self.collection = collection
         self.team_name =collection.team
@@ -52,10 +54,11 @@ class CreateVectorsDB(object):
             self.create_vectors(i, type=1)
 
             # Если появится желание дополнять недостающие вектора
-            #vectors_quantity = VectorsOneVersion1.objects.filter(collection=self.collection, type=1, username=i).count()
+            # vectors_quantity = VectorsOneVersion1.objects.filter(collection=self.collection, type=1, username=i).count()
             # necessary_vectors_quantity = self.collection.num_vectors
             # if vectors_quantity < necessary_vectors_quantity:
             #     self.add_vectors(i, vectors_quantity, necessary_vectors_quantity)
+
             print('user ' + i + ' success writing training data')
 
         # выборка для тестирования
@@ -83,20 +86,20 @@ class CreateVectorsDB(object):
         name.
         """
         times = necessary_vectors_quantity // vectors_quantity - 1
-        array = VectorsOneVersion1.objects.filter(collection=self.collection, type=1, username=name).values()
+        array = self.vector_model.objects.filter(collection=self.collection, type=1, username=name).values()
         for i in range(times):
             for j in array:
                 line = j.copy()
                 del line['id']
-                new = VectorsOneVersion1.objects.create(**line)
+                new = self.vector_model.objects.create(**line)
                 new.save()
-        difference = necessary_vectors_quantity - VectorsOneVersion1.objects.filter(collection=self.collection, type=1, username=name).count()
+        difference = necessary_vectors_quantity - self.vector_model.objects.filter(collection=self.collection, type=1, username=name).count()
         i = 0
         for j in array:
             i += 1
             line = j.copy()
             del line['id']
-            new = VectorsOneVersion1.objects.create(**line)
+            new = self.vector_model.objects.create(**line)
             new.save()
             if i >= difference:
                 break
@@ -285,7 +288,7 @@ class CreateVectorsDB(object):
             res.update(self.get_info('domain_type', 'click__domain__type', all_types,values))
             res.update(self.get_info('domain_categories', 'click__domain__category', all_categories, values))
 
-            new = VectorsOneVersion1.objects.create(**res)
+            new = self.vector_model.objects.create(**res)
             new.save()
 
     def get_info(self, field_name, type_perm, all_type_objs, values):
@@ -338,7 +341,8 @@ class CreateUserVectors(CreateVectorsDB):
     Иногда необходимо по-отдельности дополнить вектора для пользователей, например в базе записаны вектора с шагом два
     но одному-двум пользователям необходимо записать с шагом 1
     """
-    def __init__(self, names, collection, start_position, step):
+    def __init__(self, num_vectors_model, names, collection, start_position, step):
+        self.vector_model = V[num_vectors_model]
         self.finish_time = None
         self.collection = collection
         self.team_name =collection.team
@@ -389,6 +393,7 @@ class CreateUserVectors(CreateVectorsDB):
             print('user ' + i + ' success writing training data')
 
         # выборка для тестирования
+        self.step = 1
         for i in self.names:
             print('user ' + i + ' start writing testing data')
             self.create_vectors(i, type=2)
@@ -416,7 +421,7 @@ class CreateUserVectors(CreateVectorsDB):
             size = all_v.count()
         elif type == 2:
             # тестирование
-            all_v = log.filter(click__time__gte=(log.earliest('click__time').click.time + timedelta(days=7 * 4))).filter(click__time__lt=(log.earliest('click__time').click.time + timedelta(days=7 * 6)))
+            all_v = log.filter(click__time__gte=(log.earliest('click__time').click.time + timedelta(days=7 * 4))).filter(click__time__lt=(log.earliest('click__time').click.time + timedelta(days=7 * 5)))
             size = all_v.count()
         all_fields = ['id', 'click__domain__domain', 'click__domain__category', 'click__domain__type', 'click__url__url',
                       'click__time', 'x1_window_coordinates', 'x2_window_coordinates', 'x_cursor_coordinates',
@@ -429,6 +434,8 @@ class CreateUserVectors(CreateVectorsDB):
         all_categories = [i[0] for i in Log.objects.distinct('click__domain__category').values_list('click__domain__category')]
         for ind in range(self.start_position, size - self.n_click, self.step):
             num += 1
+            if type == 2 and num > 15000:
+                break
             res = {'collection': self.collection, 'username': name, 'type': type}
             values = all_values[ind: ind + self.n_click]
 
@@ -591,5 +598,5 @@ class CreateUserVectors(CreateVectorsDB):
             res.update(self.get_info('domain_type', 'click__domain__type', all_types,values))
             res.update(self.get_info('domain_categories', 'click__domain__category', all_categories, values))
 
-            new = VectorsOneVersion3.objects.create(**res)
+            new = self.vector_model.objects.create(**res)
             new.save()

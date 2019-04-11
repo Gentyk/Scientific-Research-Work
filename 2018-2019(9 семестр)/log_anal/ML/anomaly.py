@@ -10,6 +10,8 @@ from base.constants import classification_algorithms, regression_algorithms
 from base.constants import patterns as pattern_list
 import matplotlib.cm as cm
 from sklearn.ensemble import IsolationForest
+from sklearn.svm import OneClassSVM
+from sklearn.preprocessing import StandardScaler
 
 from time import time
 
@@ -20,52 +22,70 @@ from sklearn import (manifold, datasets, decomposition, ensemble,
                      discriminant_analysis, random_projection)
 
 
-def SNE(collection):#exit(), pattern_list):
+def anomaly(collection, pattern_list, name):
     # данные для обучения
-    patterns = [
-       # 'days', 'day_parts',
-        'activity_time',
-        'middle_pause', 'middle_pause2', 'middle_pause3',
-      #  'quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3',
-        'start_comp_pause',
-        'urls', 'url_freq_pause', 'url_maps',
-        'domains', 'dom_freq_pause', 'domain_maps',
-     #   'url_bi', 'url_bi_pauses',
-        'dom_bi', 'dom_bi_pauses',
-      #  'url_tri', 'url_tri_pauses',
-      #  'dom_tri', 'dom_tri_pauses',
-        'domain_type',
-      #  'domain_categories'
-    ]
-
+    # patterns = [
+    #    # 'days', 'day_parts',
+    #     'activity_time',
+    #     'middle_pause', 'middle_pause2', 'middle_pause3',
+    #   #  'quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3',
+    #     'start_comp_pause',
+    #     'urls', 'url_freq_pause', 'url_maps',
+    #     'domains', 'dom_freq_pause', 'domain_maps',
+    #  #   'url_bi', 'url_bi_pauses',
+    #     'dom_bi', 'dom_bi_pauses',
+    #   #  'url_tri', 'url_tri_pauses',
+    #   #  'dom_tri', 'dom_tri_pauses',
+    #     'domain_type',
+    #   #  'domain_categories'
+    # ]
+    patterns = pattern_list.copy()
     patterns.append('username')
     fil = {'collection' : collection, 'type': 1}
-    X, Y = get_arrays_re(fil, patterns, 'tanchik')
-    print(X)
-    n = len(Y)
-    print('Длина вектора' + str(len(X[0])))
+    X = get_arrays_re(fil, patterns, name)
+    print(len(X))
+    n = len(X[0])
+    print('Длина вектора' + str(n))
 
+    scaler = StandardScaler()
+    scaler.fit(X)
+    X = scaler.transform(X)
+    a = OneClassSVM(gamma=0.03)#IsolationForest()
+    a.fit(X)
+    X = None
+    
     # данные для тестирования
     fil = {'collection': collection, 'type': 2}
-    test_X, test_Y = get_test_arrays(fil, patterns, 'tanchik', len(X[0]))
-    print(test_X)
-
+    test_X, test_Y = get_test2_arrays(fil, patterns, name, n)
     n_test = len(test_Y)
-    ml = {'IF': IsolationForest()}
-    # обучение, тестирование, вывод на экран
-    for name_alg, algorithm in ml.items():
-        print('\n' + name_alg)
-        a = algorithm
-        a.fit(X)
-        result = a.predict(test_X)
-        aver_g = 0
-        aver_b = 0
-        for i in range(n_test):
-            if result[i] == test_Y[i]:
-                aver_g += 1
-            else:
-                aver_b += 1
-        print('good aver=' + str(aver_g/n_test))
+    print(n_test)
+    test_X = scaler.transform(test_X)
+    result = a.predict(test_X)
+    print(set(result))
+    aver_g = 0
+    num_good = VectorsOneVersion2.objects.filter(**fil).filter(username=name).count()
+    num_bad = VectorsOneVersion2.objects.filter(**fil).count() - num_good
+    aver_b = 0
+    err = 0
+    far = 0
+    frr = 0
+
+    for i in range(n_test):
+        if result[i] == 1 and test_Y[i] == 1:
+            aver_g += 1
+        elif result[i] == -1 and test_Y[i] == -1:
+            aver_b += 1
+        else:
+            err += 1
+        if result[i] == 1 and test_Y[i] != 1:
+            far += 1
+        if result[i] != 1 and test_Y[i] == 1:
+            frr += 1
+    print(err)
+    print('good aver=' + str(aver_g/num_good))
+    print('bad aver=' + str(aver_b / num_bad))
+    print('frr=' + str(frr / num_good))
+    print('far=' + str(far / num_bad))
 
 
 
@@ -87,14 +107,31 @@ def get_test_arrays(criterion, patterns, name=None, l = 0):
                     l_X.extend(obj)
             else:
                 l_X.append(obj)
-
-        # if len(l_X) != l:
-        #     continue
         Y.append(line[-1])
         X.append(l_X.copy())
-    print(set(Y))
-   # Y = [1 if name==i else -1 for i in Y]
+    X = np.array(X)
+    Y = np.array(Y)
+    return X, Y
 
+def get_test2_arrays(criterion, patterns, name=None, l = 0):
+    mass = VectorsOneVersion2.objects.filter(**criterion).values_list(*patterns)
+    X = []
+    Y = []
+    for line in mass:
+        l_X = []
+        for obj in line[:len(line)-1]:
+            if isinstance(obj, list):
+                # для карты кликов
+                if isinstance(obj[0], list):
+                    for j in obj:
+                        l_X.extend(j)
+                else:
+                    l_X.extend(obj)
+            else:
+                l_X.append(obj)
+        Y.append(line[-1])
+        X.append(l_X.copy())
+    Y = [1 if i == name else -1 for i in Y]
     X = np.array(X)
     Y = np.array(Y)
     return X, Y
@@ -112,7 +149,6 @@ def get_arrays_re(criterion, patterns, name=None):
     print(patterns)
     mass = VectorsOneVersion2.objects.filter(username=name).filter(**criterion).values_list(*patterns)
     X = []
-    Y = []
     for line in mass:
         l_X = []
         for obj in line[:len(line)-1]:
@@ -125,40 +161,32 @@ def get_arrays_re(criterion, patterns, name=None):
                     l_X.extend(obj)
             else:
                 l_X.append(obj)
-        Y.append(line[-1])
         X.append(l_X.copy())
-    Y = [1 for i in Y]
-
-    print('line'+str(len(X[0])))
     X = np.array(X)
-    Y = np.array(Y)
-    return X, Y
+    return X
 
-
-
-
-
-
-def anomaly1(collection):#exit(), pattern_list):
+def SNE(collection, pattern_list):
     # данные для обучения
-    patterns = [
-       # 'days', 'day_parts',
-        'activity_time',
-         'middle_pause', 'middle_pause2', 'middle_pause3',
-      #  'quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3',
-      #  'start_comp_pause',
-        'urls',# 'url_freq_pause',
-        #'url_maps',
-        'domains',
-        #'dom_freq_pause',
-         'domain_maps',
-     #   'url_bi', 'url_bi_pauses',
-     #   'dom_bi', 'dom_bi_pauses',
-      #  'url_tri', 'url_tri_pauses',
-      #  'dom_tri', 'dom_tri_pauses',
-       'domain_type',
-      #  'domain_categories'
-    ]
+    # patterns = [
+    #    # 'days', 'day_parts',
+    #     'activity_time',
+    #      'middle_pause', 'middle_pause2', 'middle_pause3',
+    #   #  'quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3',
+    #   #  'start_comp_pause',
+    #     'urls',# 'url_freq_pause',
+    #     #'url_maps',
+    #     'domains',
+    #     #'dom_freq_pause',
+    #      'domain_maps',
+    #  #   'url_bi', 'url_bi_pauses',
+    #  #   'dom_bi', 'dom_bi_pauses',
+    #   #  'url_tri', 'url_tri_pauses',
+    #   #  'dom_tri', 'dom_tri_pauses',
+    #    'domain_type',
+    #   #  'domain_categories'
+    # ]
+
+    patterns = pattern_list.copy()
 
     patterns.append('username')
     fil = {'collection' : collection, 'type': 1}
@@ -186,6 +214,3 @@ def anomaly1(collection):#exit(), pattern_list):
         plt.scatter(xx, yy, label=name)
     plt.legend()
     plt.show()
-
-
-

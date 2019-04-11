@@ -6,13 +6,14 @@ import time
 from sklearn.externals import joblib
 from sklearn.preprocessing import StandardScaler
 
-from analyse.models import ML, VectorsOneVersion1, Collections
-from base.constants import classification_algorithms, regression_algorithms
+from analyse.models import ML, Collections
+from base.constants import classification_algorithms, regression_algorithms, V
 from ML.new_ML import Classification, ClassificationTest
 
 
 class OneTrain(Classification):
-    def __init__(self, collection, pattern_list, algorithm, username, num_train_vectors=1600, file=None, exclude=[]):
+    def __init__(self, num_vectors_model, collection, pattern_list, algorithm, username, num_train_vectors=1600, file=None, exclude=[]):
+        self.vector_model = V[num_vectors_model]
         self.collection = collection
         self.pattern_list = pattern_list
         self.algorithm = algorithm
@@ -26,7 +27,7 @@ class OneTrain(Classification):
         # данные для обучения
         print(self.pattern_list)
         fil = {'collection': self.collection, 'type': 1}
-        names = [name[0] for name in VectorsOneVersion1.objects.filter(**fil).distinct('username').values_list('username')]
+        names = [name[0] for name in self.vector_model.objects.filter(**fil).distinct('username').values_list('username')]
         exclude = self.exclude.copy()
         exclude.extend([name for name in names if name != self.username])
         X, Y = self.get_arrays_norma(fil, self.pattern_list, exclude, self.num_train_vectors)
@@ -64,7 +65,8 @@ class OneTrain(Classification):
 
 
 class OneTest(ClassificationTest):
-    def __init__(self, collection, pattern_list, algorithm, username, scaler=None, alg=None, file=None, mistakes=0, exclude=[], num_train_vectors=None):
+    def __init__(self, num_vectors_model, collection, pattern_list, algorithm, username, scaler=None, alg=None, file=None, mistakes=0, exclude=[], num_train_vectors=None):
+        self.vector_model = V[num_vectors_model]
         self.collection = collection
         self.pattern_list = pattern_list
         self.algorithm = algorithm
@@ -85,7 +87,7 @@ class OneTest(ClassificationTest):
         # данные для тестирования
         fil = {'collection': self.collection, 'type': 2}
         names = [name[0] for name in
-                 VectorsOneVersion1.objects.filter(**fil).distinct('username').values_list('username')]
+                 self.vector_model.objects.filter(**fil).distinct('username').values_list('username')]
         exclude = self.exclude.copy()
         exclude.extend([name for name in names if name != self.username])
         test_X, test_Y = self.get_arrays_order_norma(fil, self.pattern_list, exclude)

@@ -9,6 +9,7 @@ from analyse.models import Teams, VectorsOneVersion1, Collections, Patterns, ML
 from base.constants import classification_algorithms, regression_algorithms, patterns
 from ML.create_vectors_in_two_files import CreateVectorsDB
 from ML.ML import classification, regression
+from ML.new_ML import Classification
 
 
 def create_dirname(path):
@@ -107,37 +108,40 @@ def train(collections, list_permission, algorithms, ):
     #messagebox.showerror("Выполнено", msg)
 
 
-def get_better_patterns(collections):
-    for i in collections:
-        col = Collections.objects.get(pk=i[0])
+def get_better_patterns(num_group):#collections):
+    #for i in collections:
+    col = Collections.objects.get(pk=15)
+    num_vectors_model = 3
 
-        pats = [i[0] for i in Patterns.objects.all().values_list('patterns')]
-        patterns_array = [
-            ['url_bi', 'url_bi_pauses', 'dom_bi', 'dom_bi_pauses'],
-            ['url_tri', 'url_tri_pauses', 'dom_tri', 'dom_tri_pauses'],
-            ['middle_pause2', 'middle_pause3', 'quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3']
-        ]
-        for patterns1 in patterns_array:
-            for pat in pats:
-                for l in range(1, len(patterns1)+1):
-                    for j in itertools.combinations(patterns1, l):
-                        patterns_list = list(set(list(j) + pat))
-                        print(patterns_list)
-                        names = [name[0] for name in Teams.objects.filter(team=col.team).values_list('username')]
-                        algorithms = ['rf']
-                        info = {'collection': col}
-                        print(names)
-                        classification(names, patterns_list, algorithms, info)
 
-            mass = [i[0] for i in ML.objects.all().values_list('accuracy')]
-            mass.sort()
-            ML.objects.filter(accuracy__lt=mass[len(mass)-100]).delete()
-            Patterns.objects.all().delete()
-            for pat in ML.objects.all().values_list('patterns'):
-                p = Patterns.objects.create(patterns=pat[0])
-                p.save()
+    patterns_array = [
+        ['days', 'day_parts', 'activity_time'],
+        ['middle_pause', 'middle_pause2', 'middle_pause3'],
+        ['quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3'],
+        ['start_comp_pause'],
+        ['url_freq_pause', 'dom_freq_pause'],
+        ['url_bi', 'url_bi_pauses', 'dom_bi', 'dom_bi_pauses'],
+        ['url_tri', 'url_tri_pauses', 'dom_tri', 'dom_tri_pauses'],
+    ]
+    for patterns1 in patterns_array:
+        pats = [i[0] for i in Patterns.objects.filter(num_group=2).values_list('patterns')]
+        for pat in pats:
+            for l in range(1, len(patterns1)+1):
+                for j in itertools.combinations(patterns1, l):
+                    patterns_list = list(set(list(j) + pat))
+                    print(patterns_list)
+                    names = [name[0] for name in Teams.objects.filter(team=col.team).values_list('username')]
+                    algorithms = 'rf'
+                    print(names)
+                    Classification(num_vectors_model, 15, patterns_list, algorithms, 10000)
+
+        mass = [i[0] for i in ML.objects.filter(num_group=num_group).values_list('accuracy')]
+        mass.sort()
+        print(mass[-1])
+        n = (len(mass)-10 if len(mass)>10 else 1)
+        ML.objects.filter(num_group=2,accuracy__lt=mass[n]).delete()
+        Patterns.objects.all().delete()
+        for pat in ML.objects.filter(num_group=num_group).values_list('patterns'):
+            p = Patterns.objects.create(num_group=num_group, patterns=pat[0])
+            p.save()
     print('завершено')
-
-
-
-

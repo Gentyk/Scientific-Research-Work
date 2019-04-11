@@ -6,17 +6,20 @@ import time
 from sklearn.externals import joblib
 from sklearn.preprocessing import StandardScaler
 
-from analyse.models import ML, VectorsOneVersion1, Collections, VectorsOneVersion2
-from base.constants import classification_algorithms, regression_algorithms
+from analyse.models import ML, Collections
+from base.constants import classification_algorithms, regression_algorithms, V
 
 class Classification(object):
-    def __init__(self, collection, pattern_list, algorithm, num_train_vectors=1600, filename=None, exclude=[]):
+    def __init__(self, num_vectors_model, collection, pattern_list, algorithm, num_train_vectors=1600, file=None, exclude=[]):
+        self.num_vectors_model=num_vectors_model
+        self.vector_model = V[num_vectors_model]
         self.collection = collection
         self.pattern_list = pattern_list
         self.algorithm = algorithm
-        self.filename = filename
+        self.filename = file
         self.exclude = exclude
         self.num_train_vectors = num_train_vectors
+        self.train()
 
     def train(self):
         # данные для обучения
@@ -25,8 +28,8 @@ class Classification(object):
         X, Y = self.get_arrays_norma(fil, self.pattern_list, self.exclude, self.num_train_vectors)
         X = np.array(X)
         Y = np.array(Y)
-        print('Длина вектора' + str(len(X[0])))
-        print('Количество векторов' + str(len(X)))
+        #print('Длина вектора' + str(len(X[0])))
+       # print('Количество векторов' + str(len(X)))
         #self.check_vectors_len(X,Y)
 
         scaler = StandardScaler()
@@ -44,7 +47,7 @@ class Classification(object):
             print('машина сохранена')
         X = None
         Y = None
-        ClassificationTest(self.collection, self.pattern_list, self.algorithm, scaler, a, exclude=self.exclude, num_train_vectors=self.num_train_vectors)
+        ClassificationTest(self.num_vectors_model, self.collection, self.pattern_list, self.algorithm, scaler, a, exclude=self.exclude, num_train_vectors=self.num_train_vectors)
 
     def check_vectors_len(self, X, Y):
         n = len(X[0])
@@ -61,23 +64,23 @@ class Classification(object):
         X = []
         Y = []
         users = [name[0] for name in
-                 VectorsOneVersion2.objects.filter(**criterion).distinct('username').values_list('username') if
+                 self.vector_model.objects.filter(**criterion).distinct('username').values_list('username') if
                  not name[0] in exclude]
         for user in users:
-            print(user)
-            n = VectorsOneVersion2.objects.filter(**criterion).filter(username=user).count()
+           # print(user)
+            n = self.vector_model.objects.filter(**criterion).filter(username=user).count()
             if n < Norma:
-                mass = [self.get_line(line) for line in VectorsOneVersion2.objects.filter(**criterion).filter(username=user).values_list(*patterns)]
+                mass = [self.get_line(line) for line in self.vector_model.objects.filter(**criterion).filter(username=user).values_list(*patterns)]
                 X.extend(self.add_vectors(mass, n, Norma))
                 mass = None
                 Y.extend([user for i in range(Norma)])
             elif n > Norma:
                 step = n // Norma
-                X.extend([self.get_line(line) for line in VectorsOneVersion2.objects.filter(**criterion).order_by('-id').filter(username=user).values_list(*patterns)[:n:step][:Norma]])
+                X.extend([self.get_line(line) for line in self.vector_model.objects.filter(**criterion).order_by('-id').filter(username=user).values_list(*patterns)[:n:step][:Norma]])
                 Y.extend([user for i in range(Norma)])
             else:
                 X.extend([self.get_line(line) for line in
-                          VectorsOneVersion2.objects.filter(**criterion).order_by('-id').filter(
+                          self.vector_model.objects.filter(**criterion).order_by('-id').filter(
                               username=user).values_list(*patterns)])
                 Y.extend([user for i in range(Norma)])
         return X, Y
@@ -105,7 +108,7 @@ class Classification(object):
         new_array = array * times
         difference = necessary_vectors_quantity - (vectors_quantity * (times))
         new_array.extend(array[:difference])
-        print(str(necessary_vectors_quantity) + ' ' +str(len(new_array)))
+        #print(str(necessary_vectors_quantity) + ' ' +str(len(new_array)))
         return new_array
 
     def reduce_vectors_number(self, array, vectors_quantity, necessary_vectors_quantity):
@@ -117,7 +120,8 @@ class Classification(object):
 
 
 class ClassificationTest(Classification):
-    def __init__(self, collection, pattern_list, algorithm, scaler=None, alg=None, file=None, mistakes=0, exclude=[], num_train_vectors=None):
+    def __init__(self, num_vectors_model, collection, pattern_list, algorithm, scaler=None, alg=None, file=None, mistakes=0, exclude=[], num_train_vectors=None):
+        self.vector_model = V[num_vectors_model]
         self.collection = collection
         self.pattern_list = pattern_list
         self.algorithm = algorithm
@@ -136,6 +140,8 @@ class ClassificationTest(Classification):
 
         # данные для тестирования
         fil = {'collection': self.collection, 'type': 2}
+
+        #test_X, test_Y = self.get_arrays_order(fil, self.pattern_list, self.exclude)
         test_X, test_Y = self.get_arrays_order_norma(fil, self.pattern_list, self.exclude)
         test_X = np.array(test_X)
         test_Y = np.array(test_Y)
@@ -143,11 +149,12 @@ class ClassificationTest(Classification):
 
         test_X = self.scaler.transform(test_X)
         names = [i[0] for i in
-                 VectorsOneVersion1.objects.filter(collection=self.collection).distinct('username').values_list(
+                 self.vector_model.objects.filter(collection=self.collection).distinct('username').values_list(
                      'username') if not i[0] in self.exclude]
         n_login_attempt = {name: 0 for name in names}  # сколько раз легитимный пользователь пытался войти
         for name in test_Y:
             n_login_attempt[name] += 1
+        print(n_login_attempt)
         active_users = [test_Y[i] for i in range(self.forgivable_mistakes)]
         result = self.alg.predict(test_X)
 
@@ -174,15 +181,15 @@ class ClassificationTest(Classification):
         summ_FAR = 0
         summ_FRR = 0
         for name in names:
-            print('\n' + name + " FAR:" + str(FAR[name] / n_test))
+            print('\n' + name + " FAR:" + str(FAR[name] / (n_test - n_login_attempt[name])))
             print('\n' + name + " FRR:" + str(FRR[name] / n_login_attempt[name]))
-            summ_FAR += FAR[name] / n_test
+            summ_FAR += FAR[name] / (n_test - n_login_attempt[name])
             summ_FRR += FRR[name] / n_login_attempt[name]
         middleFAR = summ_FAR / len(names)
         middleFRR = summ_FRR / len(names)
         print("\nсредний FAR:" + str(middleFAR))
         print("\nсредний FRR:" + str(middleFRR))
-        print(self.pattern_list)
+        #print(self.pattern_list)
         collection = Collections.objects.get(pk=self.collection)
         ML.objects.create(
             collection=collection,
@@ -191,11 +198,14 @@ class ClassificationTest(Classification):
             middleFRR=middleFRR,
             accuracy=accuracy,
             algorithm=self.algorithm,
+            num_group=2,
         )
 
-    def get_arrays_order(self, criterion, patterns, exclude=[]):
-        mass = VectorsOneVersion1.objects.order_by('id').filter(**criterion).values_list(*patterns)
-        print(patterns)
+    def get_arrays_order(self, criterion, patterns_l, exclude=[]):
+        patterns = patterns_l.copy()
+        patterns.append('username')
+        mass = self.vector_model.objects.filter(**criterion).values_list(*patterns)
+        #print(patterns)
         X = []
         Y = []
         for line in mass:
@@ -213,22 +223,20 @@ class ClassificationTest(Classification):
                         l_X.append(obj)
                 Y.append(line[-1])
                 X.append(l_X.copy())
-        X = np.array(X)#, dtype=object)
-        Y = np.array(Y)#, dtype=object)
         return X, Y
 
     def get_arrays_order_norma(self, criterion, patterns, exclude=[]):
         X = []
         Y = []
         users = [name[0] for name in
-                 VectorsOneVersion2.objects.filter(**criterion).distinct('username').values_list('username') if
+                 self.vector_model.objects.filter(**criterion).distinct('username').values_list('username') if
                  not name[0] in exclude]
         for user in users:
-            print(user)
-            n = VectorsOneVersion2.objects.filter(**criterion).filter(username=user).count()
-            if self.num_train_vectors and int(self.num_train_vectors*0.3) < VectorsOneVersion2.objects.filter(**criterion).filter(username=user).count():
+            #print(user)
+            n = self.vector_model.objects.filter(**criterion).filter(username=user).count()
+            if self.num_train_vectors and int(self.num_train_vectors*0.3) < self.vector_model.objects.filter(**criterion).filter(username=user).count():
                 n = int(self.num_train_vectors*0.3)
-            X.extend([self.get_line(line) for line in VectorsOneVersion2.objects.filter(**criterion).filter(
+            X.extend([self.get_line(line) for line in self.vector_model.objects.filter(**criterion).filter(
                           username=user).order_by('id').values_list(*patterns)][:n])
             Y.extend([user for i in range(n)])
             if len(X) != len(Y):
