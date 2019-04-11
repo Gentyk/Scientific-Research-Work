@@ -199,6 +199,9 @@ class VectorsOneVersion3(models.Model):
     domain_type = ArrayField(models.IntegerField(default=0), default=list)
     domain_categories = ArrayField(models.IntegerField(default=0), default=list)
 
+    urls_map = ArrayField(models.IntegerField(default=0), default=list)
+    domains_map = ArrayField(models.IntegerField(default=0), default=list)
+
     last_click = models.IntegerField(default=0) # для синхронизации тестирования пачек из нескольких кликов
 
 class VectorsOneVersion4(models.Model):
@@ -398,6 +401,18 @@ class Patterns(models.Model):
 class ML(models.Model):
     collection = models.ForeignKey(Collections ,default=None, db_index=True, on_delete=models.CASCADE)
     accuracy = models.FloatField(default=0.0)
+    patterns = ArrayField(models.TextField(default=""))
+    middleFAR = models.FloatField(default=0.0)
+    middleFRR = models.FloatField(default=0.0)
+    algorithm = models.TextField(db_index=True, default="")
+    num_group = models.IntegerField(db_index=True, default=1)
+
+
+class AnomalyML(models.Model):
+    collection = models.ForeignKey(Collections ,default=None, db_index=True, on_delete=models.CASCADE)
+    accuracy = models.FloatField(default=0.0)
+    good_accuracy = models.FloatField(default=0.0)
+    bad_accuracy = models.FloatField(default=0.0)
     patterns = ArrayField(models.TextField(default=""))
     middleFAR = models.FloatField(default=0.0)
     middleFRR = models.FloatField(default=0.0)

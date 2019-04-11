@@ -240,7 +240,7 @@ class ClassificationTest(Classification):
                           username=user).order_by('id').values_list(*patterns)][:n])
             Y.extend([user for i in range(n)])
             if len(X) != len(Y):
-                break
+                raise
         return X, Y
 
 

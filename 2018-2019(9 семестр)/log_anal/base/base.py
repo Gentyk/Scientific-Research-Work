@@ -5,11 +5,12 @@ import itertools
 import os
 import time
 
-from analyse.models import Teams, VectorsOneVersion1, Collections, Patterns, ML
-from base.constants import classification_algorithms, regression_algorithms, patterns
+from analyse.models import Teams, VectorsOneVersion1, Collections, Patterns, ML, AnomalyML
+from base.constants import classification_algorithms, regression_algorithms, patterns, V
 from ML.create_vectors_in_two_files import CreateVectorsDB
 from ML.ML import classification, regression
 from ML.new_ML import Classification
+from ML.anomaly import Anomaly
 
 
 def create_dirname(path):
@@ -108,12 +109,8 @@ def train(collections, list_permission, algorithms, ):
     #messagebox.showerror("Выполнено", msg)
 
 
-def get_better_patterns(num_group):#collections):
-    #for i in collections:
-    col = Collections.objects.get(pk=15)
-    num_vectors_model = 3
-
-
+def get_better_patterns(num_vectors_model, collection, num_group):#collections):
+    col = Collections.objects.get(pk=collection)
     patterns_array = [
         ['days', 'day_parts', 'activity_time'],
         ['middle_pause', 'middle_pause2', 'middle_pause3'],
@@ -124,7 +121,7 @@ def get_better_patterns(num_group):#collections):
         ['url_tri', 'url_tri_pauses', 'dom_tri', 'dom_tri_pauses'],
     ]
     for patterns1 in patterns_array:
-        pats = [i[0] for i in Patterns.objects.filter(num_group=2).values_list('patterns')]
+        pats = [i[0] for i in Patterns.objects.filter(num_group=num_group).values_list('patterns')]
         for pat in pats:
             for l in range(1, len(patterns1)+1):
                 for j in itertools.combinations(patterns1, l):
@@ -133,15 +130,60 @@ def get_better_patterns(num_group):#collections):
                     names = [name[0] for name in Teams.objects.filter(team=col.team).values_list('username')]
                     algorithms = 'rf'
                     print(names)
-                    Classification(num_vectors_model, 15, patterns_list, algorithms, 10000)
+                    Classification(num_vectors_model, collection, patterns_list, algorithms, 10000)
 
         mass = [i[0] for i in ML.objects.filter(num_group=num_group).values_list('accuracy')]
         mass.sort()
         print(mass[-1])
         n = (len(mass)-10 if len(mass)>10 else 1)
-        ML.objects.filter(num_group=2,accuracy__lt=mass[n]).delete()
-        Patterns.objects.all().delete()
+        ML.objects.filter(num_group=num_group,accuracy__lt=mass[n]).delete()
+        Patterns.objects.filter(num_group=num_group).delete()
         for pat in ML.objects.filter(num_group=num_group).values_list('patterns'):
+            p = Patterns.objects.create(num_group=num_group, patterns=pat[0])
+            p.save()
+    print('завершено')
+
+def anomaly_get_better_patterns(num_vectors_model, collection, num_group):
+    names = ['ys', 'bv', 'mk', 'ro']
+    col = Collections.objects.get(pk=collection)
+    patterns_array = [
+        ['urls', 'domains'],
+        ['days', 'day_parts', 'activity_time'],
+        ['middle_pause', 'middle_pause2', 'middle_pause3'],
+        ['quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3'],
+        ['start_comp_pause'],
+        ['url_freq_pause', 'dom_freq_pause'],
+        ['url_bi', 'url_bi_pauses', 'dom_bi', 'dom_bi_pauses'],
+        ['url_tri', 'url_tri_pauses', 'dom_tri', 'dom_tri_pauses'],
+        ['domain_type', 'domain_category'],
+    ]
+    for patterns1 in patterns_array:
+        pats = [i[0] for i in Patterns.objects.filter(num_group=num_group).values_list('patterns')]
+        for pat in pats:
+            for l in range(1, len(patterns1)+1):
+                for j in itertools.combinations(patterns1, l):
+                    patterns_list = list(set(list(j) + pat))
+                    if patterns_list == []:
+                        continue
+                    print(patterns_list)
+                    Anomaly(num_vectors_model, collection, patterns_list, names)
+        if pats == []:
+            for l in range(1, len(patterns1) + 1):
+                for j in itertools.combinations(patterns1, l):
+                    patterns_list = list(j)
+                    if patterns_list == []:
+                        continue
+                    print(patterns_list)
+                    Anomaly(num_vectors_model, collection, patterns_list, names)
+
+        mass = [i[0] for i in AnomalyML.objects.filter(num_group=num_group).values_list('accuracy')]
+        mass.sort()
+        print(mass[-1])
+        if len(mass) > 9:
+            n = (len(mass)-10 if len(mass)>10 else 1)
+            AnomalyML.objects.filter(num_group=num_group,accuracy__lt=mass[n]).delete()
+        Patterns.objects.filter(num_group=num_group).delete()
+        for pat in AnomalyML.objects.filter(num_group=num_group).values_list('patterns'):
             p = Patterns.objects.create(num_group=num_group, patterns=pat[0])
             p.save()
     print('завершено')
