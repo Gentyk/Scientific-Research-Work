@@ -12,6 +12,7 @@ import matplotlib.cm as cm
 from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
 from sklearn.preprocessing import StandardScaler
+from sklearn.mixture import GaussianMixture
 
 from time import time
 

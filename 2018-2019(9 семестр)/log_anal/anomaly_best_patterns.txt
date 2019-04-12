@@ -1,0 +1,114 @@
+{'id': 6, 'collection_id': 16, 'accuracy': 0.81662962962963, 'good_accuracy': 0.0940651667959659, 'bad_accuracy': 0.283789119048246, 'patterns': ['day_parts', 'urls'], 'middleFAR': 0.0320585370989393, 'middleFRR': 0.0330982023004238, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 15, 'collection_id': 16, 'accuracy': 0.734259259259259, 'good_accuracy': 0.110744763382467, 'bad_accuracy': 0.253388782144079, 'patterns': ['day_parts', 'days', 'domains'], 'middleFAR': 0.0624588740031058, 'middleFRR': 0.0319664148658963, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 16, 'collection_id': 16, 'accuracy': 0.725666666666667, 'good_accuracy': 0.003, 'bad_accuracy': 0.29554594659974, 'patterns': ['activity_time', 'days', 'domains'], 'middleFAR': 0.0673097275558647, 'middleFRR': 0.0446766048804088, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 17, 'collection_id': 16, 'accuracy': 0.727666666666667, 'good_accuracy': 0.195500387897595, 'bad_accuracy': 0.245295185955308, 'patterns': ['day_parts', 'activity_time', 'domains'], 'middleFAR': 0.0705524701918775, 'middleFRR': 0.0262153554602164, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 18, 'collection_id': 16, 'accuracy': 0.755814814814815, 'good_accuracy': 0.102792862684251, 'bad_accuracy': 0.2615876608849, 'patterns': ['day_parts', 'activity_time', 'days', 'domains'], 'middleFAR': 0.0542599952622852, 'middleFRR': 0.0325059879451478, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 22, 'collection_id': 16, 'accuracy': 0.725074074074074, 'good_accuracy': 0.0732, 'bad_accuracy': 0.279383750113392, 'patterns': ['day_parts', 'urls', 'days', 'domains'], 'middleFAR': 0.0834719240422122, 'middleFRR': 0.0287563121768317, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 23, 'collection_id': 16, 'accuracy': 0.727481481481482, 'good_accuracy': 0.0513333333333333, 'bad_accuracy': 0.28532551177769, 'patterns': ['urls', 'activity_time', 'days', 'domains'], 'middleFAR': 0.0775301623779142, 'middleFRR': 0.0337153397236249, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 24, 'collection_id': 16, 'accuracy': 0.719777777777778, 'good_accuracy': 0.183863460046548, 'bad_accuracy': 0.243281657147369, 'patterns': ['day_parts', 'urls', 'activity_time', 'domains'], 'middleFAR': 0.0725659989998158, 'middleFRR': 0.0270049746005843, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 25, 'collection_id': 16, 'accuracy': 0.730037037037037, 'good_accuracy': 0.0512666666666667, 'bad_accuracy': 0.286383840827311, 'patterns': ['day_parts', 'activity_time', 'urls', 'days', 'domains'], 'middleFAR': 0.0764718333282937, 'middleFRR': 0.0337304587100481, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 26, 'collection_id': 16, 'accuracy': 0.735, 'good_accuracy': 0.187548487199379, 'bad_accuracy': 0.248440502197773, 'patterns': ['middle_pause', 'activity_time', 'urls', 'days', 'domains'], 'middleFAR': 0.0674071539494117, 'middleFRR': 0.0267549285394678, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 27, 'collection_id': 16, 'accuracy': 0.727814814814815, 'good_accuracy': 0.0502, 'bad_accuracy': 0.285718605424692, 'patterns': ['middle_pause2', 'activity_time', 'urls', 'days', 'domains'], 'middleFAR': 0.0771370687309123, 'middleFRR': 0.0339723624928185, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 28, 'collection_id': 16, 'accuracy': 0.743111111111111, 'good_accuracy': 0.18366951124903, 'bad_accuracy': 0.251585818440239, 'patterns': ['activity_time', 'middle_pause3', 'urls', 'days', 'domains'], 'middleFAR': 0.064261837706946, 'middleFRR': 0.0270181349195905, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 29, 'collection_id': 16, 'accuracy': 0.722888888888889, 'good_accuracy': 0.202870442203258, 'bad_accuracy': 0.243097412681283, 'patterns': ['middle_pause', 'middle_pause2', 'activity_time', 'urls', 'days', 'domains'], 'middleFAR': 0.0727502434659016, 'middleFRR': 0.0257152633379833, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 30, 'collection_id': 16, 'accuracy': 0.736111111111111, 'good_accuracy': 0.183087664856478, 'bad_accuracy': 0.249137999105098, 'patterns': ['middle_pause', 'activity_time', 'middle_pause3', 'urls', 'days', 'domains'], 'middleFAR': 0.0667096570420867, 'middleFRR': 0.0270576158766088, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 31, 'collection_id': 16, 'accuracy': 0.739814814814815, 'good_accuracy': 0.182505818463926, 'bad_accuracy': 0.25049351196273, 'patterns': ['middle_pause2', 'activity_time', 'middle_pause3', 'urls', 'days', 'domains'], 'middleFAR': 0.065354144184455, 'middleFRR': 0.0270970968336272, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 32, 'collection_id': 16, 'accuracy': 0.723185185185185, 'good_accuracy': 0.199767261442979, 'bad_accuracy': 0.243413260337431, 'patterns': ['middle_pause', 'middle_pause2', 'activity_time', 'middle_pause3', 'urls', 'days', 'domains'], 'middleFAR': 0.0724343958097544, 'middleFRR': 0.0259258284420814, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 33, 'collection_id': 16, 'accuracy': 0.713518518518519, 'good_accuracy': 0.179402637703646, 'bad_accuracy': 0.241360250572474, 'patterns': ['middle_pause', 'day_parts', 'activity_time', 'urls', 'domains'], 'middleFAR': 0.0744874055747111, 'middleFRR': 0.0273076619377254, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 34, 'collection_id': 16, 'accuracy': 0.712111111111111, 'good_accuracy': 0.181923972071373, 'bad_accuracy': 0.240689074303161, 'patterns': ['day_parts', 'middle_pause2', 'activity_time', 'urls', 'domains'], 'middleFAR': 0.0751585818440239, 'middleFRR': 0.0271365777906456, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 35, 'collection_id': 16, 'accuracy': 0.720074074074074, 'good_accuracy': 0.182505818463926, 'bad_accuracy': 0.243479061932461, 'patterns': ['day_parts', 'activity_time', 'middle_pause3', 'urls', 'domains'], 'middleFAR': 0.0723685942147238, 'middleFRR': 0.0270970968336272, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 36, 'collection_id': 16, 'accuracy': 0.709592592592593, 'good_accuracy': 0.178044996121024, 'bad_accuracy': 0.240057378990867, 'patterns': ['middle_pause', 'day_parts', 'middle_pause2', 'activity_time', 'urls', 'domains'], 'middleFAR': 0.0757902771563183, 'middleFRR': 0.0273997841707683, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 37, 'collection_id': 16, 'accuracy': 0.713148148148148, 'good_accuracy': 0.177851047323507, 'bad_accuracy': 0.241333929934462, 'patterns': ['middle_pause', 'day_parts', 'activity_time', 'middle_pause3', 'urls', 'domains'], 'middleFAR': 0.0745137262127234, 'middleFRR': 0.0274129444897744, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 38, 'collection_id': 16, 'accuracy': 0.718518518518519, 'good_accuracy': 0.180372381691234, 'bad_accuracy': 0.243071092043271, 'patterns': ['day_parts', 'middle_pause2', 'activity_time', 'middle_pause3', 'urls', 'domains'], 'middleFAR': 0.0727765641039139, 'middleFRR': 0.0272418603426947, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 39, 'collection_id': 16, 'accuracy': 0.710222222222222, 'good_accuracy': 0.175911559348332, 'bad_accuracy': 0.240425867923038, 'patterns': ['middle_pause', 'day_parts', 'middle_pause2', 'activity_time', 'middle_pause3', 'urls', 'domains'], 'middleFAR': 0.0754217882241466, 'middleFRR': 0.0275445476798358, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 40, 'collection_id': 16, 'accuracy': 0.738259259259259, 'good_accuracy': 0.049, 'bad_accuracy': 0.290254301351637, 'patterns': ['middle_pause', 'day_parts', 'activity_time', 'urls', 'days', 'domains'], 'middleFAR': 0.0726013728039672, 'middleFRR': 0.0342445042484352, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 41, 'collection_id': 16, 'accuracy': 0.730185185185185, 'good_accuracy': 0.0502, 'bad_accuracy': 0.286686220555774, 'patterns': ['day_parts', 'middle_pause2', 'activity_time', 'urls', 'days', 'domains'], 'middleFAR': 0.0761694535998307, 'middleFRR': 0.0339723624928185, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 42, 'collection_id': 16, 'accuracy': 0.729925925925926, 'good_accuracy': 0.0505333333333333, 'bad_accuracy': 0.286504792718696, 'patterns': ['day_parts', 'activity_time', 'middle_pause3', 'urls', 'days', 'domains'], 'middleFAR': 0.0763508814369085, 'middleFRR': 0.0338967675607027, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 43, 'collection_id': 16, 'accuracy': 0.738555555555556, 'good_accuracy': 0.0486, 'bad_accuracy': 0.290465967161561, 'patterns': ['middle_pause', 'day_parts', 'middle_pause2', 'activity_time', 'urls', 'days', 'domains'], 'middleFAR': 0.0723897069940431, 'middleFRR': 0.0343352181669741, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 44, 'collection_id': 16, 'accuracy': 0.738481481481482, 'good_accuracy': 0.049, 'bad_accuracy': 0.290345015270176, 'patterns': ['middle_pause', 'day_parts', 'activity_time', 'middle_pause3', 'urls', 'days', 'domains'], 'middleFAR': 0.0725106588854283, 'middleFRR': 0.0342445042484352, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 45, 'collection_id': 16, 'accuracy': 0.730333333333333, 'good_accuracy': 0.0502, 'bad_accuracy': 0.286746696501467, 'patterns': ['day_parts', 'middle_pause2', 'activity_time', 'middle_pause3', 'urls', 'days', 'domains'], 'middleFAR': 0.0761089776541381, 'middleFRR': 0.0339723624928185, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 46, 'collection_id': 16, 'accuracy': 0.738814814814815, 'good_accuracy': 0.0486666666666667, 'bad_accuracy': 0.2905566810801, 'patterns': ['middle_pause', 'day_parts', 'middle_pause2', 'activity_time', 'middle_pause3', 'urls', 'days', 'domains'], 'middleFAR': 0.0722989930755042, 'middleFRR': 0.0343200991805509, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 47, 'collection_id': 16, 'accuracy': 0.636, 'good_accuracy': 0.0673333333333333, 'bad_accuracy': 0.244353058570953, 'patterns': ['day_parts', 'middle_pause', 'urls'], 'middleFAR': 0.118502615584651, 'middleFRR': 0.0300867829820689, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 48, 'collection_id': 16, 'accuracy': 0.796296296296296, 'good_accuracy': 0.121993793638479, 'bad_accuracy': 0.274669017976996, 'patterns': ['day_parts', 'middle_pause2', 'urls'], 'middleFAR': 0.0411786381701892, 'middleFRR': 0.0312031163635407, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 49, 'collection_id': 16, 'accuracy': 0.448333333333333, 'good_accuracy': 0.337470907680372, 'bad_accuracy': 0.136406706498566, 'patterns': ['day_parts', 'urls', 'middle_pause3'], 'middleFAR': 0.179440949648619, 'middleFRR': 0.0165820019477272, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 50, 'collection_id': 16, 'accuracy': 0.637851851851852, 'good_accuracy': 0.0665333333333333, 'bad_accuracy': 0.245290435729189, 'patterns': ['day_parts', 'middle_pause', 'middle_pause2', 'urls'], 'middleFAR': 0.117565238426416, 'middleFRR': 0.0302682108191467, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 51, 'collection_id': 16, 'accuracy': 0.639407407407407, 'good_accuracy': 0.0664666666666667, 'bad_accuracy': 0.245940552145384, 'patterns': ['day_parts', 'middle_pause', 'middle_pause3', 'urls'], 'middleFAR': 0.11691512201022, 'middleFRR': 0.0302833298055698, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 52, 'collection_id': 16, 'accuracy': 0.428296296296296, 'good_accuracy': 0.356089992242048, 'bad_accuracy': 0.128023583291659, 'patterns': ['day_parts', 'middle_pause2', 'middle_pause3', 'urls'], 'middleFAR': 0.187824072855526, 'middleFRR': 0.0153186113231385, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 53, 'collection_id': 16, 'accuracy': 0.641259259259259, 'good_accuracy': 0.0656666666666667, 'bad_accuracy': 0.246877929303619, 'patterns': ['middle_pause', 'day_parts', 'middle_pause2', 'middle_pause3', 'urls'], 'middleFAR': 0.115977744851985, 'middleFRR': 0.0304647576426476, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 54, 'collection_id': 16, 'accuracy': 0.736074074074074, 'good_accuracy': 0.116563227307991, 'bad_accuracy': 0.253638828205196, 'patterns': ['day_parts', 'middle_pause', 'days', 'domains'], 'middleFAR': 0.0622088279419893, 'middleFRR': 0.0315716052957124, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 55, 'collection_id': 16, 'accuracy': 0.737222222222222, 'good_accuracy': 0.110744763382467, 'bad_accuracy': 0.25444160766457, 'patterns': ['day_parts', 'middle_pause2', 'days', 'domains'], 'middleFAR': 0.0614060484826152, 'middleFRR': 0.0319664148658963, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 56, 'collection_id': 16, 'accuracy': 0.738222222222222, 'good_accuracy': 0.116175329712956, 'bad_accuracy': 0.254428447345564, 'patterns': ['day_parts', 'days', 'middle_pause3', 'domains'], 'middleFAR': 0.0614192088016213, 'middleFRR': 0.0315979259337246, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 57, 'collection_id': 16, 'accuracy': 0.731407407407407, 'good_accuracy': 0.117726920093095, 'bad_accuracy': 0.251901666096386, 'patterns': ['middle_pause', 'day_parts', 'middle_pause2', 'days', 'domains'], 'middleFAR': 0.0639459900507988, 'middleFRR': 0.0314926433816756, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 58, 'collection_id': 16, 'accuracy': 0.736, 'good_accuracy': 0.117532971295578, 'bad_accuracy': 0.253546705972153, 'patterns': ['middle_pause', 'day_parts', 'middle_pause3', 'days', 'domains'], 'middleFAR': 0.0623009501750322, 'middleFRR': 0.0315058037006817, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 59, 'collection_id': 16, 'accuracy': 0.734962962962963, 'good_accuracy': 0.109968968192397, 'bad_accuracy': 0.25369146948122, 'patterns': ['day_parts', 'middle_pause2', 'middle_pause3', 'days', 'domains'], 'middleFAR': 0.0621561866659648, 'middleFRR': 0.0320190561419209, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 60, 'collection_id': 16, 'accuracy': 0.731555555555556, 'good_accuracy': 0.117726920093095, 'bad_accuracy': 0.251954307372411, 'patterns': ['middle_pause', 'day_parts', 'middle_pause2', 'middle_pause3', 'days', 'domains'], 'middleFAR': 0.0638933487747743, 'middleFRR': 0.0314926433816756, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 61, 'collection_id': 16, 'accuracy': 0.726555555555556, 'good_accuracy': 0.206361520558573, 'bad_accuracy': 0.24416339852078, 'patterns': ['middle_pause', 'activity_time', 'days', 'domains'], 'middleFAR': 0.0716842576264049, 'middleFRR': 0.0254783775958729, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 62, 'collection_id': 16, 'accuracy': 0.729222222222222, 'good_accuracy': 0.216058960434445, 'bad_accuracy': 0.244452925538915, 'patterns': ['middle_pause2', 'activity_time', 'days', 'domains'], 'middleFAR': 0.0713947306082699, 'middleFRR': 0.0248203616455663, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 63, 'collection_id': 16, 'accuracy': 0.731592592592593, 'good_accuracy': 0.202870442203258, 'bad_accuracy': 0.246190087647725, 'patterns': ['activity_time', 'days', 'middle_pause3', 'domains'], 'middleFAR': 0.0696575684994604, 'middleFRR': 0.0257152633379833, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 64, 'collection_id': 16, 'accuracy': 0.725259259259259, 'good_accuracy': 0.204615981380915, 'bad_accuracy': 0.243821230226621, 'patterns': ['middle_pause', 'middle_pause2', 'activity_time', 'days', 'domains'], 'middleFAR': 0.0720264259205643, 'middleFRR': 0.0255968204669281, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 65, 'collection_id': 16, 'accuracy': 0.726481481481482, 'good_accuracy': 0.203840186190846, 'bad_accuracy': 0.244308162029848, 'patterns': ['middle_pause', 'activity_time', 'middle_pause3', 'days', 'domains'], 'middleFAR': 0.0715394941173374, 'middleFRR': 0.0256494617429526, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 66, 'collection_id': 16, 'accuracy': 0.731111111111111, 'good_accuracy': 0.211598138091544, 'bad_accuracy': 0.245426789145369, 'patterns': ['middle_pause2', 'activity_time', 'middle_pause3', 'days', 'domains'], 'middleFAR': 0.0704208670018161, 'middleFRR': 0.0251230489827073, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 67, 'collection_id': 16, 'accuracy': 0.725444444444444, 'good_accuracy': 0.201900698215671, 'bad_accuracy': 0.244071276287737, 'patterns': ['middle_pause', 'middle_pause2', 'activity_time', 'middle_pause3', 'days', 'domains'], 'middleFAR': 0.0717763798594478, 'middleFRR': 0.025781064933014, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 68, 'collection_id': 16, 'accuracy': 0.720962962962963, 'good_accuracy': 0.192785104732351, 'bad_accuracy': 0.243097412681283, 'patterns': ['day_parts', 'middle_pause', 'activity_time', 'domains'], 'middleFAR': 0.0727502434659016, 'middleFRR': 0.0263995999263022, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 69, 'collection_id': 16, 'accuracy': 0.725407407407407, 'good_accuracy': 0.196082234290147, 'bad_accuracy': 0.244452925538915, 'patterns': ['day_parts', 'middle_pause2', 'activity_time', 'domains'], 'middleFAR': 0.0713947306082699, 'middleFRR': 0.026175874503198, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 70, 'collection_id': 16, 'accuracy': 0.727888888888889, 'good_accuracy': 0.19511249030256, 'bad_accuracy': 0.245400468507357, 'patterns': ['day_parts', 'activity_time', 'middle_pause3', 'domains'], 'middleFAR': 0.0704471876398284, 'middleFRR': 0.0262416760982286, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 71, 'collection_id': 16, 'accuracy': 0.718, 'good_accuracy': 0.187354538401862, 'bad_accuracy': 0.242413076092965, 'patterns': ['middle_pause', 'day_parts', 'middle_pause2', 'activity_time', 'domains'], 'middleFAR': 0.0734345800542205, 'middleFRR': 0.0267680888584739, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 72, 'collection_id': 16, 'accuracy': 0.721259259259259, 'good_accuracy': 0.191233514352211, 'bad_accuracy': 0.243307977785382, 'patterns': ['middle_pause', 'day_parts', 'activity_time', 'middle_pause3', 'domains'], 'middleFAR': 0.0725396783618035, 'middleFRR': 0.0265048824783513, 'algorithm': 'OneClassSVM', 'num_group': 3}
+
+{'id': 73, 'collection_id': 16, 'accuracy': 0.725518518518519, 'good_accuracy': 0.195306439100078, 'bad_accuracy': 0.244545047771958, 'patterns': ['day_parts', 'middle_pause2', 'activity_time', 'middle_pause3', 'domains'], 'middleFAR': 0.071302608375227, 'middleFRR': 0.0262285157792225, 'algorithm': 'OneClassSVM', 'num_group': 3}
+

@@ -147,21 +147,26 @@ def anomaly_get_better_patterns(num_vectors_model, collection, num_group):
     names = ['ys', 'bv', 'mk', 'ro']
     col = Collections.objects.get(pk=collection)
     patterns_array = [
-        ['urls', 'domains'],
-        ['days', 'day_parts', 'activity_time'],
-        ['middle_pause', 'middle_pause2', 'middle_pause3'],
-        ['quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3'],
-        ['start_comp_pause'],
-        ['url_freq_pause', 'dom_freq_pause'],
-        ['url_bi', 'url_bi_pauses', 'dom_bi', 'dom_bi_pauses'],
-        ['url_tri', 'url_tri_pauses', 'dom_tri', 'dom_tri_pauses'],
-        ['domain_type', 'domain_category'],
+       # ['urls', 'domains'],
+       # ['days', 'day_parts'],
+       # ['activity_time'],
+       # ['middle_pause', 'middle_pause2', 'middle_pause3'],
+       # ['quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3'],
+       # ['start_comp_pause'],
+       # ['url_freq_pause', 'dom_freq_pause'],
+       # ['url_bi', 'url_bi_pauses'],
+       # ['dom_bi', 'dom_bi_pauses'],
+       # ['url_tri', 'url_tri_pauses'],
+       # ['dom_tri', 'dom_tri_pauses'],
+        ['domain_type', 'domain_categories'],
+        ['domains_map', 'urls_map'],
     ]
     for patterns1 in patterns_array:
         pats = [i[0] for i in Patterns.objects.filter(num_group=num_group).values_list('patterns')]
         for pat in pats:
             for l in range(1, len(patterns1)+1):
                 for j in itertools.combinations(patterns1, l):
+                    print('\n\n'+str(j))
                     patterns_list = list(set(list(j) + pat))
                     if patterns_list == []:
                         continue
@@ -175,12 +180,23 @@ def anomaly_get_better_patterns(num_vectors_model, collection, num_group):
                         continue
                     print(patterns_list)
                     Anomaly(num_vectors_model, collection, patterns_list, names)
+		# а случай пересечений
+        if AnomalyML.objects.filter(num_group=3).distinct('patterns', 'accuracy').count() < AnomalyML.objects.filter(
+                num_group=3).count():
+            print("!конфликт")
+            exclude = ['id']
+            lpatterns = [f.name for f in AnomalyML._meta.fields if f.name not in exclude]
+            f = list(AnomalyML.objects.filter(num_group=3).distinct('patterns', 'accuracy').values(*lpatterns)).copy()
+            AnomalyML.objects.filter(num_group=3).delete()
+            for i in f:
+                i['collection'] = Collections.objects.get(pk=i['collection'])
+                AnomalyML.objects.create(**i)
 
         mass = [i[0] for i in AnomalyML.objects.filter(num_group=num_group).values_list('accuracy')]
         mass.sort()
         print(mass[-1])
-        if len(mass) > 9:
-            n = (len(mass)-10 if len(mass)>10 else 1)
+        if len(mass) > 5:
+            n = (len(mass)-5 if len(mass)>5 else 1)
             AnomalyML.objects.filter(num_group=num_group,accuracy__lt=mass[n]).delete()
         Patterns.objects.filter(num_group=num_group).delete()
         for pat in AnomalyML.objects.filter(num_group=num_group).values_list('patterns'):
