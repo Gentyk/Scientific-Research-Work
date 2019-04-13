@@ -418,3 +418,14 @@ class AnomalyML(models.Model):
     middleFRR = models.FloatField(default=0.0)
     algorithm = models.TextField(db_index=True, default="")
     num_group = models.IntegerField(db_index=True, default=1)
+
+
+class RSML(models.Model):
+    accuracy = models.FloatField(default=0.0)
+    patterns1 = ArrayField(models.TextField(default=""))
+    patterns2 = ArrayField(models.TextField(default=""))
+    patterns3 = ArrayField(models.TextField(default=""))
+    patterns4 = ArrayField(models.TextField(default=""))
+    patterns5 = ArrayField(models.TextField(default=""))
+    middleFAR = models.FloatField(default=0.0)
+    middleFRR = models.FloatField(default=0.0)
