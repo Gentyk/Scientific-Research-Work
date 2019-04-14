@@ -5,12 +5,13 @@ import time
 
 from sklearn.externals import joblib
 from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import BaggingClassifier
 
 from analyse.models import ML, Collections
 from base.constants import classification_algorithms, regression_algorithms, V
 
 class Classification(object):
-    def __init__(self, num_vectors_model, collection, pattern_list, algorithm, num_train_vectors=1600, file=None, exclude=[]):
+    def __init__(self, num_vectors_model, collection, pattern_list, algorithm, num_train_vectors=1600, file=None, exclude=[], num_group=2):
         self.num_vectors_model=num_vectors_model
         self.vector_model = V[num_vectors_model]
         self.collection = collection
@@ -19,6 +20,7 @@ class Classification(object):
         self.filename = file
         self.exclude = exclude
         self.num_train_vectors = num_train_vectors
+        self.num_group = num_group
         self.train()
 
     def train(self):
@@ -47,7 +49,7 @@ class Classification(object):
             print('машина сохранена')
         X = None
         Y = None
-        ClassificationTest(self.num_vectors_model, self.collection, self.pattern_list, self.algorithm, scaler, a, exclude=self.exclude, num_train_vectors=self.num_train_vectors)
+        ClassificationTest(self.num_vectors_model, self.collection, self.pattern_list, self.algorithm, scaler, a, exclude=self.exclude, num_train_vectors=self.num_train_vectors, num_group=self.num_group)
 
     def check_vectors_len(self, X, Y):
         n = len(X[0])
@@ -120,7 +122,7 @@ class Classification(object):
 
 
 class ClassificationTest(Classification):
-    def __init__(self, num_vectors_model, collection, pattern_list, algorithm, scaler=None, alg=None, file=None, mistakes=0, exclude=[], num_train_vectors=None):
+    def __init__(self, num_vectors_model, collection, pattern_list, algorithm, scaler=None, alg=None, file=None, mistakes=0, exclude=[], num_train_vectors=None, num_group=2):
         self.vector_model = V[num_vectors_model]
         self.collection = collection
         self.pattern_list = pattern_list
@@ -131,6 +133,7 @@ class ClassificationTest(Classification):
         self.file = file
         self.exclude = exclude
         self.num_train_vectors=num_train_vectors
+        self.num_group = num_group
         self.test()
 
     def test(self):
@@ -163,10 +166,15 @@ class ClassificationTest(Classification):
         FRR = {name: 0 for name in names}  # случайно заблокировали владельца
         good = 0
         for i in range(n_test):
-            if result[i] != test_Y[i]:
-                if test_Y[i] in active_users:
-
-                    result[i] = test_Y[i]
+            if self.forgivable_mistakes:
+                if result[i] != test_Y[i]:
+                    if test_Y[i] in active_users:
+                        active_users = active_users[1:] + [result[i]]
+                        result[i] = test_Y[i]
+                    else:
+                        active_users = active_users[1:] + [result[i]]
+                else:
+                    active_users = active_users[1:] + [result[i]]
 
             if result[i] == test_Y[i]:
                 good += 1
@@ -175,7 +183,6 @@ class ClassificationTest(Classification):
                     FAR[name] += 1
                 if result[i] != name and test_Y[i] == name:
                     FRR[name] += 1
-            active_users = active_users[1:] + [result[i]]
         accuracy = good / n_test
         print('\n' + 'точность:' + str(good / n_test))
         summ_FAR = 0
@@ -191,15 +198,15 @@ class ClassificationTest(Classification):
         print("\nсредний FRR:" + str(middleFRR))
         #print(self.pattern_list)
         collection = Collections.objects.get(pk=self.collection)
-        ML.objects.create(
-            collection=collection,
-            patterns=self.pattern_list,
-            middleFAR=middleFAR,
-            middleFRR=middleFRR,
-            accuracy=accuracy,
-            algorithm=self.algorithm,
-            num_group=2,
-        )
+        # ML.objects.create(
+        #     collection=collection,
+        #     patterns=self.pattern_list,
+        #     middleFAR=middleFAR,
+        #     middleFRR=middleFRR,
+        #     accuracy=accuracy,
+        #     algorithm=self.algorithm,
+        #     num_group=self.num_group,
+        # )
 
     def get_arrays_order(self, criterion, patterns_l, exclude=[]):
         patterns = patterns_l.copy()
@@ -236,9 +243,13 @@ class ClassificationTest(Classification):
             n = self.vector_model.objects.filter(**criterion).filter(username=user).count()
             if self.num_train_vectors and int(self.num_train_vectors*0.3) < self.vector_model.objects.filter(**criterion).filter(username=user).count():
                 n = int(self.num_train_vectors*0.3)
+            # if user == 'mk':
+            #     criterion['type'] = 3
             X.extend([self.get_line(line) for line in self.vector_model.objects.filter(**criterion).filter(
                           username=user).order_by('id').values_list(*patterns)][:n])
             Y.extend([user for i in range(n)])
+            # if user == 'mk':
+            #     criterion['type'] = 2
             if len(X) != len(Y):
                 raise
         return X, Y
