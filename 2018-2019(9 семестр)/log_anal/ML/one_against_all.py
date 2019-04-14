@@ -13,6 +13,7 @@ from ML.new_ML import Classification, ClassificationTest
 
 class OneTrain(Classification):
     def __init__(self, num_vectors_model, collection, pattern_list, algorithm, username, num_train_vectors=1600, file=None, exclude=[]):
+        self.num_vectors_model = num_vectors_model
         self.vector_model = V[num_vectors_model]
         self.collection = collection
         self.pattern_list = pattern_list
@@ -61,7 +62,7 @@ class OneTrain(Classification):
             print('машина сохранена')
         X = None
         Y = None
-        OneTest(self.collection, self.pattern_list, self.algorithm, self.username, scaler, a, exclude=self.exclude, num_train_vectors=self.num_train_vectors)
+        OneTest(self.num_vectors_model, self.collection, self.pattern_list, self.algorithm, self.username, scaler, a, exclude=self.exclude, num_train_vectors=self.num_train_vectors)
 
 
 class OneTest(ClassificationTest):
@@ -94,6 +95,7 @@ class OneTest(ClassificationTest):
         test_Y = [1 for i in test_Y]
         exclude = self.exclude.copy()
         exclude.extend([self.username])
+        self.num_train_vectors = self.num_train_vectors // 8
         new_X, new_Y = self.get_arrays_order_norma(fil, self.pattern_list, exclude)
         new_Y = [-1 for i in new_Y]
         test_X.extend(new_X.copy())
@@ -116,43 +118,32 @@ class OneTest(ClassificationTest):
         FAR = {name: 0 for name in names}  # ложное положительное решение
         FRR = {name: 0 for name in names}  # случайно заблокировали владельца
         good = 0
-        err = 0
         for i in range(n_test):
-            if result[i] != test_Y[i]:
-                if 1 in active_users:
-                    err += 1
-                    result[i] = test_Y[i]
-
+            if self.forgivable_mistakes:
+                if result[i] != self.username:
+                    if test_Y[i] in active_users:
+                        active_users = active_users[1:] + [result[i]]
+                        result[i] = test_Y[i]
+                    else:
+                        active_users = active_users[1:] + [result[i]]
+                else:
+                    active_users = active_users[1:] + [result[i]]
             if result[i] == test_Y[i]:
                 good += 1
-            for name in names:
-                if result[i] == name and test_Y[i] != name:
-                    FAR[name] += 1
-                if result[i] != name and test_Y[i] == name:
-                    FRR[name] += 1
-
-            active_users = active_users[1:] + [result[i]]
-        accuracy = good / n_test
-        print('количество ошибок' + str(err))
+            if result[i] == 1 and test_Y[i] == -1:
+                FAR[1] += 1
+            if result[i] == -1 and test_Y[i] == 1:
+                FRR[1] += 1
         print('\n' + 'точность:' + str(good / n_test))
-        summ_FAR = 0
-        summ_FRR = 0
-        for name in names:
-            print('\n' + str(name) + " FAR:" + str(FAR[name] / n_test))
-            print('\n' + str(name) + " FRR:" + str(FRR[name] / n_login_attempt[name]))
-            summ_FAR += FAR[name] / n_test
-            summ_FRR += FRR[name] / n_login_attempt[name]
-        middleFAR = summ_FAR / len(names)
-        middleFRR = summ_FRR / len(names)
-        print("\nсредний FAR:" + str(middleFAR))
-        print("\nсредний FRR:" + str(middleFRR))
-        print(self.pattern_list)
+        print('\n' + str(1) + " FAR:" + str(FAR[1] / n_login_attempt[-1]))
+        print('\n' + str(1) + " FRR:" + str(FRR[1] / n_login_attempt[1]))
         collection = Collections.objects.get(pk=self.collection)
         ML.objects.create(
             collection=collection,
             patterns=self.pattern_list,
-            middleFAR=middleFAR,
-            middleFRR=middleFRR,
-            accuracy=accuracy,
+            middleFAR=FAR[1] / n_login_attempt[-1],
+            middleFRR=FRR[1] / n_login_attempt[1],
+            accuracy=good / n_test,
             algorithm=self.algorithm,
+            num_group=-1,
         )
