@@ -109,33 +109,42 @@ def train(collections, list_permission, algorithms, ):
     #messagebox.showerror("Выполнено", msg)
 
 
-def get_better_patterns(num_vectors_model, collection, num_group):#collections):
-    col = Collections.objects.get(pk=collection)
+def get_better_patterns(num_vectors_model, collection, num_group):
     patterns_array = [
-        ['days', 'day_parts', 'activity_time'],
+        ['activity_time'],
+        ['days', 'day_parts'],
         ['middle_pause', 'middle_pause2', 'middle_pause3'],
         ['quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3'],
         ['start_comp_pause'],
         ['url_freq_pause', 'dom_freq_pause'],
-        ['url_bi', 'url_bi_pauses', 'dom_bi', 'dom_bi_pauses'],
-        ['url_tri', 'url_tri_pauses', 'dom_tri', 'dom_tri_pauses'],
+        ['url_bi', 'url_bi_pauses'],
+        ['dom_bi', 'dom_bi_pauses'],
+        ['url_tri', 'url_tri_pauses'],
+        ['dom_tri', 'dom_tri_pauses'],
+        ['domain_type', 'domain_categories'],
+        ['domains_map', 'urls_map'],
+        ['domain_maps', 'url_maps'],
     ]
     for patterns1 in patterns_array:
         pats = [i[0] for i in Patterns.objects.filter(num_group=num_group).values_list('patterns')]
+        if not pats:
+            pats = [['urls', 'domains']]
         for pat in pats:
-            for l in range(1, len(patterns1)+1):
+            if len(pats) == 1:
+                m=0
+            else:
+                m=1
+            for l in range(m, len(patterns1)+1):
                 for j in itertools.combinations(patterns1, l):
                     patterns_list = list(set(list(j) + pat))
                     print(patterns_list)
-                    names = [name[0] for name in Teams.objects.filter(team=col.team).values_list('username')]
                     algorithms = 'rf'
-                    print(names)
-                    Classification(num_vectors_model, collection, patterns_list, algorithms, 10000)
+                    Classification(num_vectors_model, collection, patterns_list, algorithms, 10000, num_group=num_group)
 
         mass = [i[0] for i in ML.objects.filter(num_group=num_group).values_list('accuracy')]
         mass.sort()
         print(mass[-1])
-        n = (len(mass)-10 if len(mass)>10 else 1)
+        n = (len(mass)-5 if len(mass)>5 else 0)
         ML.objects.filter(num_group=num_group,accuracy__lt=mass[n]).delete()
         Patterns.objects.filter(num_group=num_group).delete()
         for pat in ML.objects.filter(num_group=num_group).values_list('patterns'):
@@ -145,26 +154,31 @@ def get_better_patterns(num_vectors_model, collection, num_group):#collections):
 
 def anomaly_get_better_patterns(num_vectors_model, collection, num_group):
     names = ['ys', 'bv', 'mk', 'ro']
-    col = Collections.objects.get(pk=collection)
     patterns_array = [
-       # ['urls', 'domains'],
-       # ['days', 'day_parts'],
-       # ['activity_time'],
-       # ['middle_pause', 'middle_pause2', 'middle_pause3'],
-       # ['quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3'],
-       # ['start_comp_pause'],
-       # ['url_freq_pause', 'dom_freq_pause'],
-       # ['url_bi', 'url_bi_pauses'],
-       # ['dom_bi', 'dom_bi_pauses'],
-       # ['url_tri', 'url_tri_pauses'],
-       # ['dom_tri', 'dom_tri_pauses'],
-        ['domain_type', 'domain_categories'],
-        ['domains_map', 'urls_map'],
+       ['urls', 'domains'],
+       ['days', 'day_parts'],
+       ['activity_time'],
+       ['middle_pause', 'middle_pause2', 'middle_pause3'],
+       ['quantity_middle_pause', 'quantity_middle_pause2', 'quantity_middle_pause3'],
+       ['start_comp_pause'],
+       ['url_freq_pause', 'dom_freq_pause'],
+       ['url_bi', 'url_bi_pauses'],
+       ['dom_bi', 'dom_bi_pauses'],
+       ['url_tri', 'url_tri_pauses'],
+       ['dom_tri', 'dom_tri_pauses'],
+       ['domain_type', 'domain_categories'],
+        ['domain_maps', 'url_maps'],
     ]
     for patterns1 in patterns_array:
-        pats = [i[0] for i in Patterns.objects.filter(num_group=num_group).values_list('patterns')]
+        pats = [i[0] for i in AnomalyML.objects.filter(num_group=num_group).values_list('patterns')]
+        if not pats:
+            pats = [['urls', 'domains']]
         for pat in pats:
-            for l in range(1, len(patterns1)+1):
+            if len(pats) == 1:
+                m=0
+            else:
+                m=1
+            for l in range(m, len(patterns1)+1):
                 for j in itertools.combinations(patterns1, l):
                     print('\n\n'+str(j))
                     patterns_list = list(set(list(j) + pat))
@@ -172,15 +186,8 @@ def anomaly_get_better_patterns(num_vectors_model, collection, num_group):
                         continue
                     print(patterns_list)
                     Anomaly(num_vectors_model, collection, patterns_list, names)
-        if pats == []:
-            for l in range(1, len(patterns1) + 1):
-                for j in itertools.combinations(patterns1, l):
-                    patterns_list = list(j)
-                    if patterns_list == []:
-                        continue
-                    print(patterns_list)
-                    Anomaly(num_vectors_model, collection, patterns_list, names)
-		# а случай пересечений
+
+        # на случай пересечений
         if AnomalyML.objects.filter(num_group=3).distinct('patterns', 'accuracy').count() < AnomalyML.objects.filter(
                 num_group=3).count():
             print("!конфликт")
