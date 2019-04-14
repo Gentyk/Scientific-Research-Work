@@ -144,6 +144,10 @@ class Anomaly(ClassificationTest):
     def get_arrays_re(self, criterion, patterns, name=None):
         print(patterns)
         mass = self.vector_model.objects.filter(username=name).filter(**criterion).values_list(*patterns)
+        #if name == 'mk':
+        #    criterion['type'] = 3
+        #    mass = list(mass).copy()
+        #    mass.extend(list(self.vector_model.objects.filter(username=name).filter(**criterion).values_list(*patterns)))
         X = []
         for line in mass:
             l_X = []
@@ -161,13 +165,12 @@ class Anomaly(ClassificationTest):
         n = len(X)
         X = self.add_vectors(X,n,10000)
         X = np.array(X)
-
         return X
 
 
 
-def get_test_arrays(criterion, patterns, name=None, l = 0):
-    mass = VectorsOneVersion2.objects.filter(**criterion).values_list(*patterns)
+def get_test_arrays(criterion, patterns, n):
+    mass = V[3].objects.filter(**criterion).values_list(*patterns)[:n]
     X = []
     Y = []
     for line in mass:
@@ -220,7 +223,31 @@ def reg_f(X):
         gg = [l / len(i) for l in i]
         Y.append(sum(gg))
     return Y
+    
+def get_array(criterion, patterns, n):
+    X = []
+    Y = []
+    users = [name[0] for name in
+             V[3].objects.filter(**criterion).distinct('username').values_list('username')]
+    for user in users:
+        #print(user)
+        mass = V[3].objects.filter(**criterion).filter(username=user).values_list(*patterns)[:n]
+        for line in mass:
+            l_X = []
+            for obj in line:
+                if isinstance(obj, list):
+                    # для карты кликов
+                    if isinstance(obj[0], list):
+                        for j in obj:
+                            l_X.extend(j)
+                    else:
+                        l_X.extend(obj)
+                else:
+                    l_X.append(obj)
 
+            X.append(l_X.copy())
+        Y.extend([user for i in range(n)])
+    return X, Y
 
 
 def SNE(collection, pattern_list):
@@ -229,7 +256,7 @@ def SNE(collection, pattern_list):
 
     patterns.append('username')
     fil = {'collection' : collection, 'type': 1}
-    X, Y = get_test_arrays(fil, patterns)
+    X, Y = get_array(fil, pattern_list, 100)
 
     # ----------------------------------------------------------------------
     # t-SNE embedding of the digits dataset
